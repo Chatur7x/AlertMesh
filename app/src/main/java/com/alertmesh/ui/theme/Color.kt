@@ -18,6 +18,7 @@ val AppleCyan = Color(0xFF55B5DB)            // macOS Terminal Cyan
 val AppleGreen = Color(0xFF50E3C2)           // Apple Terminal Neon Mint/Green
 val AppleYellow = Color(0xFFF5A623)          // Apple Warm Warning Gold
 val AppleRed = Color(0xFFFF3B30)             // Apple System Red
+val AppleRedGlow = Color(0x44FF3B30)         // Apple Red Glow Accent
 val ApplePurple = Color(0xFFBD10E0)          // macOS Accent Purple
 val AppleBlue = Color(0xFF007AFF)            // Apple System Blue
 
@@ -47,5 +48,5 @@ val NeonCyanGlow = Color(0x3355B5DB)
 val NeonAmber = AppleYellow
 val NeonAmberGlow = Color(0x33F5A623)
 val NeonRed = AppleRed
-val NeonRedGlow = Color(0x44FF3B30)
+val NeonRedGlow = AppleRedGlow
 val NeonViolet = ApplePurple
