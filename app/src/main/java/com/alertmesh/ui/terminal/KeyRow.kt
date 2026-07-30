@@ -17,30 +17,69 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.alertmesh.ui.theme.TerminalBgLight
-import com.alertmesh.ui.theme.TerminalGreen
-import com.alertmesh.ui.theme.TerminalTypography
+import androidx.compose.ui.unit.sp
+import com.alertmesh.ui.theme.CyberBgCard
+import com.alertmesh.ui.theme.CyberBgSurface
+import com.alertmesh.ui.theme.NeonCyan
+import com.alertmesh.ui.theme.NeonGreen
+import com.alertmesh.ui.theme.NeonRed
+import com.alertmesh.ui.theme.TerminalFontFamily
+import com.alertmesh.ui.theme.TextPrimary
 
 @Composable
 fun KeyRow(
     onKeyPress: (String) -> Unit,
     onHistoryUp: () -> Unit,
     onHistoryDown: () -> Unit,
+    onExecuteCommand: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
-    val keys = listOf("Tab", "/", "↑", "↓", "Esc", "Ctrl", "|", "-", "@")
+    
+    // Quick action slash commands & special keys
+    val commands = listOf(
+        "/peers" to NeonCyan,
+        "/ping" to NeonCyan,
+        "/trace" to NeonCyan,
+        "/msg" to NeonCyan,
+        "/sos" to NeonRed,
+        "/fix" to NeonGreen,
+        "/metrics" to NeonGreen,
+        "/clear" to NeonGreen
+    )
+
+    val keys = listOf("Tab", "/", "↑", "↓", "|", "-", "@")
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(TerminalBgLight)
+            .background(CyberBgCard)
             .horizontalScroll(scrollState)
-            .padding(horizontal = 4.dp, vertical = 6.dp),
+            .padding(horizontal = 6.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Render command chips
+        for ((cmd, color) in commands) {
+            CommandChip(
+                text = cmd,
+                accentColor = color,
+                onClick = { onExecuteCommand(cmd) }
+            )
+        }
+
+        // Divider spacer
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 2.dp)
+                .sizeIn(minWidth = 1.dp, minHeight = 24.dp)
+                .background(Color(0xFF2A364F))
+        )
+
+        // Render special keys
         for (key in keys) {
             KeyButton(
                 text = key,
@@ -57,20 +96,42 @@ fun KeyRow(
 }
 
 @Composable
+private fun CommandChip(text: String, accentColor: Color, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(6.dp),
+        color = CyberBgSurface,
+        border = BorderStroke(1.dp, accentColor)
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)) {
+            Text(
+                text = text,
+                color = accentColor,
+                fontFamily = TerminalFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp
+            )
+        }
+    }
+}
+
+@Composable
 private fun KeyButton(text: String, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
-            .sizeIn(minWidth = 36.dp, minHeight = 32.dp)
+            .sizeIn(minWidth = 34.dp, minHeight = 30.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(4.dp),
-        color = TerminalBgLight,
-        border = BorderStroke(1.dp, TerminalGreen)
+        shape = RoundedCornerShape(6.dp),
+        color = CyberBgCard,
+        border = BorderStroke(0.8.dp, NeonGreen)
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
             Text(
                 text = text,
-                color = TerminalGreen,
-                style = TerminalTypography.bodyMedium
+                color = TextPrimary,
+                fontFamily = TerminalFontFamily,
+                fontSize = 12.sp
             )
         }
     }

@@ -22,11 +22,11 @@ fun buildTerminalLine(prefix: String, prefixColor: Color, body: String, bodyColo
 
 fun okLine(text: String): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = TerminalGreen, fontWeight = FontWeight.Bold)) {
+        withStyle(style = SpanStyle(color = NeonGreen, fontWeight = FontWeight.Bold)) {
             append("[ OK ]")
         }
         append(" ")
-        withStyle(style = SpanStyle(color = TerminalWhite)) {
+        withStyle(style = SpanStyle(color = TextPrimary)) {
             append(text)
         }
     }
@@ -34,11 +34,11 @@ fun okLine(text: String): AnnotatedString {
 
 fun warnLine(text: String): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = TerminalAmber, fontWeight = FontWeight.Bold)) {
+        withStyle(style = SpanStyle(color = NeonAmber, fontWeight = FontWeight.Bold)) {
             append("[ WARN ]")
         }
         append(" ")
-        withStyle(style = SpanStyle(color = TerminalAmber)) {
+        withStyle(style = SpanStyle(color = NeonAmber)) {
             append(text)
         }
     }
@@ -46,11 +46,11 @@ fun warnLine(text: String): AnnotatedString {
 
 fun errLine(text: String): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = TerminalRed, fontWeight = FontWeight.Bold)) {
+        withStyle(style = SpanStyle(color = NeonRed, fontWeight = FontWeight.Bold)) {
             append("[ ERR ]")
         }
         append(" ")
-        withStyle(style = SpanStyle(color = TerminalRed)) {
+        withStyle(style = SpanStyle(color = NeonRed)) {
             append(text)
         }
     }
@@ -58,47 +58,46 @@ fun errLine(text: String): AnnotatedString {
 
 fun infoLine(text: String): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = TerminalCyan)) {
+        withStyle(style = SpanStyle(color = NeonCyan, fontWeight = FontWeight.SemiBold)) {
             append(text)
-        }
-        withStyle(style = SpanStyle(color = TerminalWhite)) {
-            append("")
         }
     }
 }
 
 fun messageLine(from: String, text: String, hops: Int): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = TerminalBlue)) {
+        withStyle(style = SpanStyle(color = NeonCyan, fontWeight = FontWeight.Bold)) {
             append("<$from>")
         }
         append(" ")
-        withStyle(style = SpanStyle(color = TerminalWhite)) {
+        withStyle(style = SpanStyle(color = TextPrimary)) {
             append(text)
         }
         append(" ")
-        withStyle(style = SpanStyle(color = TerminalDim)) {
-            append("(hops:$hops)")
+        withStyle(style = SpanStyle(color = TextDim)) {
+            append("[hops:$hops]")
         }
     }
 }
 
 fun sosLine(from: String, condition: String): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = TerminalRed, fontWeight = FontWeight.Bold)) {
-            append("[ SOS ]")
+        withStyle(style = SpanStyle(color = NeonRed, fontWeight = FontWeight.Bold)) {
+            append("[ 🚨 SOS ALARM ]")
         }
         append(" ")
-        withStyle(style = SpanStyle(color = TerminalRed)) {
-            append("FROM: $from - $condition")
+        withStyle(style = SpanStyle(color = NeonRed, fontWeight = FontWeight.SemiBold)) {
+            append("NODE <$from> REPORTING: $condition")
         }
     }
 }
 
 fun commandEcho(input: String): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = TerminalBlue)) {
-            append("> ")
+        withStyle(style = SpanStyle(color = NeonGreen, fontWeight = FontWeight.Bold)) {
+            append("❯ ")
+        }
+        withStyle(style = SpanStyle(color = NeonCyan)) {
             append(input)
         }
     }
