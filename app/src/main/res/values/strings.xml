@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">AlertMesh</string>
+    <string name="notification_channel_name">Mesh Network</string>
+    <string name="notification_channel_desc">AlertMesh mesh networking service</string>
+    <string name="notification_title">AlertMesh Active</string>
+    <string name="notification_text">Mesh network is running</string>
+</resources>
