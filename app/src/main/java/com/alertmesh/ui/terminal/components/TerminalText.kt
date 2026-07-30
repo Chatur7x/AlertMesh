@@ -22,7 +22,7 @@ fun buildTerminalLine(prefix: String, prefixColor: Color, body: String, bodyColo
 
 fun okLine(text: String): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = NeonGreen, fontWeight = FontWeight.Bold)) {
+        withStyle(style = SpanStyle(color = AppleGreen, fontWeight = FontWeight.Bold)) {
             append("[ OK ]")
         }
         append(" ")
@@ -34,11 +34,11 @@ fun okLine(text: String): AnnotatedString {
 
 fun warnLine(text: String): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = NeonAmber, fontWeight = FontWeight.Bold)) {
+        withStyle(style = SpanStyle(color = AppleYellow, fontWeight = FontWeight.Bold)) {
             append("[ WARN ]")
         }
         append(" ")
-        withStyle(style = SpanStyle(color = NeonAmber)) {
+        withStyle(style = SpanStyle(color = AppleYellow)) {
             append(text)
         }
     }
@@ -46,11 +46,11 @@ fun warnLine(text: String): AnnotatedString {
 
 fun errLine(text: String): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = NeonRed, fontWeight = FontWeight.Bold)) {
+        withStyle(style = SpanStyle(color = AppleRed, fontWeight = FontWeight.Bold)) {
             append("[ ERR ]")
         }
         append(" ")
-        withStyle(style = SpanStyle(color = NeonRed)) {
+        withStyle(style = SpanStyle(color = AppleRed)) {
             append(text)
         }
     }
@@ -58,7 +58,7 @@ fun errLine(text: String): AnnotatedString {
 
 fun infoLine(text: String): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = NeonCyan, fontWeight = FontWeight.SemiBold)) {
+        withStyle(style = SpanStyle(color = AppleCyan, fontWeight = FontWeight.SemiBold)) {
             append(text)
         }
     }
@@ -66,7 +66,7 @@ fun infoLine(text: String): AnnotatedString {
 
 fun messageLine(from: String, text: String, hops: Int): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = NeonCyan, fontWeight = FontWeight.Bold)) {
+        withStyle(style = SpanStyle(color = AppleCyan, fontWeight = FontWeight.Bold)) {
             append("<$from>")
         }
         append(" ")
@@ -82,11 +82,11 @@ fun messageLine(from: String, text: String, hops: Int): AnnotatedString {
 
 fun sosLine(from: String, condition: String): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = NeonRed, fontWeight = FontWeight.Bold)) {
+        withStyle(style = SpanStyle(color = AppleRed, fontWeight = FontWeight.Bold)) {
             append("[ 🚨 SOS ALARM ]")
         }
         append(" ")
-        withStyle(style = SpanStyle(color = NeonRed, fontWeight = FontWeight.SemiBold)) {
+        withStyle(style = SpanStyle(color = AppleRed, fontWeight = FontWeight.SemiBold)) {
             append("NODE <$from> REPORTING: $condition")
         }
     }
@@ -94,10 +94,10 @@ fun sosLine(from: String, condition: String): AnnotatedString {
 
 fun commandEcho(input: String): AnnotatedString {
     return buildAnnotatedString {
-        withStyle(style = SpanStyle(color = NeonGreen, fontWeight = FontWeight.Bold)) {
-            append("❯ ")
+        withStyle(style = SpanStyle(color = AppleGreen, fontWeight = FontWeight.Bold)) {
+            append("node@alertmesh % ")
         }
-        withStyle(style = SpanStyle(color = NeonCyan)) {
+        withStyle(style = SpanStyle(color = AppleCyan)) {
             append(input)
         }
     }

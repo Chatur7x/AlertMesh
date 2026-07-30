@@ -2,34 +2,50 @@ package com.alertmesh.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Beast Cyber-Tactical Palette
-val CyberBg = Color(0xFF05080E)           // Deep space tactical black
-val CyberBgCard = Color(0xFF0D131F)       // Translucent dark slate card
-val CyberBgSurface = Color(0xFF141C2E)    // Elevated surface dark blue
-val CyberBgInput = Color(0xFF0A0F1A)      // Dark input field background
+// Super Apple Terminal macOS Palette
+val AppleBgDark = Color(0xFF1E1E24)         // macOS Terminal Dark Background
+val AppleWindowBg = Color(0xFF18181C)       // Window Titlebar Background
+val AppleCardBg = Color(0xFF25252D)         // Frosted Glass Card Background
+val AppleInputBg = Color(0xFF141418)        // Input console dark background
 
-val NeonGreen = Color(0xFF00FF66)        // Matrix neon green (online/success)
-val NeonGreenGlow = Color(0x3300FF66)    // Semi-transparent green glow
-val NeonCyan = Color(0xFF00E5FF)         // Electric cyan (peer IDs/crypto)
-val NeonCyanGlow = Color(0x3300E5FF)     // Semi-transparent cyan glow
-val NeonAmber = Color(0xFFFFB300)        // Tactical warning amber
-val NeonAmberGlow = Color(0x33FFB300)    // Semi-transparent amber glow
-val NeonRed = Color(0xFFFF0055)          // Intense crimson (SOS/emergency)
-val NeonRedGlow = Color(0x44FF0055)      // Semi-transparent red glow
-val NeonViolet = Color(0xFFB026FF)       // Quantum key violet
+// Iconic Apple macOS Traffic Light Window Buttons
+val AppleCloseRed = Color(0xFFFF5F56)       // 🔴 Close
+val AppleMinimizeYellow = Color(0xFFFFBD2E)  // 🟡 Minimize
+val AppleMaximizeGreen = Color(0xFF27C93F)   // 🟢 Maximize
 
-val TextPrimary = Color(0xFFF0F4F8)      // Bright crisp white
-val TextSecondary = Color(0xFF8A99AD)    // Muted slate gray
-val TextDim = Color(0xFF4A586E)          // Subdued border/dim gray
+// Terminal Text Accent Colors
+val AppleCyan = Color(0xFF55B5DB)            // macOS Terminal Cyan
+val AppleGreen = Color(0xFF50E3C2)           // Apple Terminal Neon Mint/Green
+val AppleYellow = Color(0xFFF5A623)          // Apple Warm Warning Gold
+val AppleRed = Color(0xFFFF3B30)             // Apple System Red
+val ApplePurple = Color(0xFFBD10E0)          // macOS Accent Purple
+val AppleBlue = Color(0xFF007AFF)            // Apple System Blue
+
+val TextPrimary = Color(0xFFF5F5F7)         // San Francisco Crisp Off-White
+val TextSecondary = Color(0xFF98989D)       // Apple Muted Secondary Gray
+val TextDim = Color(0xFF5A5A5E)             // Subdued Border/Dim Gray
 
 // Legacy alias compatibility
-val TerminalGreen = NeonGreen
-val TerminalAmber = NeonAmber
-val TerminalRed = NeonRed
-val TerminalCyan = NeonCyan
+val TerminalGreen = AppleGreen
+val TerminalAmber = AppleYellow
+val TerminalRed = AppleRed
+val TerminalCyan = AppleCyan
 val TerminalDim = TextDim
-val TerminalBg = CyberBg
-val TerminalBgLight = CyberBgCard
+val TerminalBg = AppleBgDark
+val TerminalBgLight = AppleCardBg
 val TerminalWhite = TextPrimary
-val TerminalBlue = NeonCyan
-val SosRed = NeonRed
+val TerminalBlue = AppleBlue
+val SosRed = AppleRed
+val CyberBg = AppleBgDark
+val CyberBgCard = AppleCardBg
+val CyberBgSurface = Color(0xFF2C2C35)
+val CyberBgInput = AppleInputBg
+val NeonGreen = AppleGreen
+val NeonGreenGlow = Color(0x3350E3C2)
+val NeonCyan = AppleCyan
+val NeonCyanGlow = Color(0x3355B5DB)
+val NeonAmber = AppleYellow
+val NeonAmberGlow = Color(0x33F5A623)
+val NeonRed = AppleRed
+val NeonRedGlow = Color(0x44FF3B30)
+val NeonViolet = ApplePurple

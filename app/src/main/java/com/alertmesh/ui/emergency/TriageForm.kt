@@ -38,13 +38,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.alertmesh.protocol.model.Condition
 import com.alertmesh.protocol.model.SosPayload
-import com.alertmesh.ui.theme.CyberBgCard
-import com.alertmesh.ui.theme.CyberBgInput
-import com.alertmesh.ui.theme.NeonAmber
-import com.alertmesh.ui.theme.NeonCyan
-import com.alertmesh.ui.theme.NeonGreen
-import com.alertmesh.ui.theme.NeonRed
-import com.alertmesh.ui.theme.NeonRedGlow
+import com.alertmesh.ui.theme.AppleCardBg
+import com.alertmesh.ui.theme.AppleCyan
+import com.alertmesh.ui.theme.AppleGreen
+import com.alertmesh.ui.theme.AppleInputBg
+import com.alertmesh.ui.theme.AppleRed
+import com.alertmesh.ui.theme.AppleRedGlow
+import com.alertmesh.ui.theme.AppleWindowBg
+import com.alertmesh.ui.theme.AppleYellow
 import com.alertmesh.ui.theme.TerminalFontFamily
 import com.alertmesh.ui.theme.TerminalTypography
 import com.alertmesh.ui.theme.TextPrimary
@@ -67,28 +68,28 @@ fun TriageForm(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(CyberBgCard)
-            .border(BorderStroke(1.dp, NeonRedGlow), RoundedCornerShape(12.dp))
+            .background(AppleCardBg)
+            .border(BorderStroke(1.dp, AppleRedGlow), RoundedCornerShape(12.dp))
             .padding(16.dp)
     ) {
         Text(
-            text = "⚡ EMERGENCY TRIAGE REPORT",
+            text = " EMERGENCY TRIAGE REPORT",
             fontFamily = TerminalFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
-            color = NeonRed
+            color = AppleRed
         )
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // 1. Condition Chips Selector
+        // Condition Chips
         Text(
-            text = "SELECT CONDITION:",
+            text = "CONDITION:",
             fontFamily = TerminalFontFamily,
-            fontSize = 11.sp,
+            fontSize = 10.sp,
             color = TextSecondary
         )
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Row(
             modifier = Modifier
@@ -99,20 +100,20 @@ fun TriageForm(
             for (c in conditions) {
                 val isSelected = c == selectedCondition
                 val chipColor = when (c) {
-                    Condition.TRAPPED, Condition.INJURED -> NeonRed
-                    Condition.NEED_MEDICAL, Condition.NEED_WATER -> NeonAmber
-                    Condition.SAFE -> NeonGreen
+                    Condition.TRAPPED, Condition.INJURED -> AppleRed
+                    Condition.NEED_MEDICAL, Condition.NEED_WATER -> AppleYellow
+                    Condition.SAFE -> AppleGreen
                 }
 
                 Surface(
                     modifier = Modifier.clickable { selectedCondition = c },
                     shape = RoundedCornerShape(6.dp),
-                    color = if (isSelected) chipColor.copy(alpha = 0.2f) else CyberBgInput,
+                    color = if (isSelected) chipColor.copy(alpha = 0.2f) else AppleInputBg,
                     border = BorderStroke(if (isSelected) 1.5.dp else 0.5.dp, if (isSelected) chipColor else TextSecondary.copy(alpha = 0.3f))
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Text(
                             text = c.name,
@@ -126,14 +127,13 @@ fun TriageForm(
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // 2. People & Injured Count Spinners
+        // People & Injured Count Spinners
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // People Count
             CounterPicker(
                 label = "TOTAL PEOPLE",
                 count = peopleCount,
@@ -141,7 +141,6 @@ fun TriageForm(
                 onDecrement = { if (peopleCount > 1) peopleCount-- }
             )
 
-            // Injured Count
             CounterPicker(
                 label = "INJURED COUNT",
                 count = injuredCount,
@@ -150,25 +149,15 @@ fun TriageForm(
             )
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // 3. Situational Note Input
+        // Note Input
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = "SITUATIONAL NOTE:",
-                fontFamily = TerminalFontFamily,
-                fontSize = 11.sp,
-                color = TextSecondary
-            )
-            Text(
-                text = "${note.length}/100",
-                fontFamily = TerminalFontFamily,
-                fontSize = 11.sp,
-                color = if (note.length > 90) NeonAmber else TextSecondary
-            )
+            Text("NOTE:", fontFamily = TerminalFontFamily, fontSize = 10.sp, color = TextSecondary)
+            Text("${note.length}/100", fontFamily = TerminalFontFamily, fontSize = 10.sp, color = TextSecondary)
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -177,22 +166,21 @@ fun TriageForm(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(6.dp))
-                .background(CyberBgInput)
-                .border(BorderStroke(0.5.dp, NeonCyan.copy(alpha = 0.5f)), RoundedCornerShape(6.dp))
+                .background(AppleInputBg)
+                .border(BorderStroke(0.5.dp, AppleCyan.copy(alpha = 0.5f)), RoundedCornerShape(6.dp))
                 .padding(8.dp)
         ) {
             BasicTextField(
                 value = note,
                 onValueChange = { if (it.length <= 100) note = it },
-                textStyle = TerminalTypography.bodyMedium.copy(color = TextPrimary),
-                cursorBrush = SolidColor(NeonCyan),
+                textStyle = TerminalTypography.bodyMedium.copy(color = TextPrimary, fontSize = 12.sp),
+                cursorBrush = SolidColor(AppleCyan),
                 modifier = Modifier.fillMaxWidth()
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // 4. Glowing SOS Broadcast Button
         Button(
             onClick = {
                 onSubmit(
@@ -208,13 +196,13 @@ fun TriageForm(
             },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = NeonRed)
+            colors = ButtonDefaults.buttonColors(containerColor = AppleRed)
         ) {
             Text(
                 text = "BROADCAST SOS EMERGENCY MESH ALERT",
                 fontFamily = TerminalFontFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 color = Color.White
             )
         }
@@ -229,45 +217,34 @@ private fun CounterPicker(
     onDecrement: () -> Unit
 ) {
     Column {
-        Text(
-            text = label,
-            fontFamily = TerminalFontFamily,
-            fontSize = 10.sp,
-            color = TextSecondary
-        )
+        Text(text = label, fontFamily = TerminalFontFamily, fontSize = 10.sp, color = TextSecondary)
         Spacer(modifier = Modifier.height(4.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .clip(RoundedCornerShape(6.dp))
-                .background(CyberBgInput)
+                .background(AppleInputBg)
                 .border(BorderStroke(0.5.dp, TextSecondary.copy(alpha = 0.4f)), RoundedCornerShape(6.dp))
                 .padding(horizontal = 6.dp, vertical = 4.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(26.dp)
+                    .size(24.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(CyberBgCard)
+                    .background(AppleWindowBg)
                     .clickable { onDecrement() },
                 contentAlignment = Alignment.Center
             ) {
                 Text("-", color = TextPrimary, fontFamily = TerminalFontFamily, fontWeight = FontWeight.Bold)
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "$count",
-                color = TextPrimary,
-                fontFamily = TerminalFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
-            )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(text = "$count", color = TextPrimary, fontFamily = TerminalFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Spacer(modifier = Modifier.width(10.dp))
             Box(
                 modifier = Modifier
-                    .size(26.dp)
+                    .size(24.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(CyberBgCard)
+                    .background(AppleWindowBg)
                     .clickable { onIncrement() },
                 contentAlignment = Alignment.Center
             ) {

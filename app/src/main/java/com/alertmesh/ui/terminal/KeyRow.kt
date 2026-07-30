@@ -21,11 +21,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.alertmesh.ui.theme.CyberBgCard
-import com.alertmesh.ui.theme.CyberBgSurface
-import com.alertmesh.ui.theme.NeonCyan
-import com.alertmesh.ui.theme.NeonGreen
-import com.alertmesh.ui.theme.NeonRed
+import com.alertmesh.ui.theme.AppleBlue
+import com.alertmesh.ui.theme.AppleCardBg
+import com.alertmesh.ui.theme.AppleCyan
+import com.alertmesh.ui.theme.AppleGreen
+import com.alertmesh.ui.theme.AppleRed
+import com.alertmesh.ui.theme.AppleWindowBg
 import com.alertmesh.ui.theme.TerminalFontFamily
 import com.alertmesh.ui.theme.TextPrimary
 
@@ -38,17 +39,17 @@ fun KeyRow(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
-    
-    // Quick action slash commands & special keys
+
+    // macOS TouchBar styled action chips
     val commands = listOf(
-        "/peers" to NeonCyan,
-        "/ping" to NeonCyan,
-        "/trace" to NeonCyan,
-        "/msg" to NeonCyan,
-        "/sos" to NeonRed,
-        "/fix" to NeonGreen,
-        "/metrics" to NeonGreen,
-        "/clear" to NeonGreen
+        "/peers" to AppleCyan,
+        "/ping" to AppleCyan,
+        "/trace" to AppleCyan,
+        "/msg" to AppleCyan,
+        "/sos" to AppleRed,
+        "/fix" to AppleGreen,
+        "/metrics" to AppleGreen,
+        "/clear" to AppleGreen
     )
 
     val keys = listOf("Tab", "/", "↑", "↓", "|", "-", "@")
@@ -56,30 +57,30 @@ fun KeyRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(CyberBgCard)
+            .background(AppleWindowBg)
             .horizontalScroll(scrollState)
             .padding(horizontal = 6.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Render command chips
+        // Render TouchBar Command Chips
         for ((cmd, color) in commands) {
-            CommandChip(
+            TouchBarChip(
                 text = cmd,
                 accentColor = color,
                 onClick = { onExecuteCommand(cmd) }
             )
         }
 
-        // Divider spacer
+        // TouchBar Separator Line
         Box(
             modifier = Modifier
                 .padding(horizontal = 2.dp)
-                .sizeIn(minWidth = 1.dp, minHeight = 24.dp)
-                .background(Color(0xFF2A364F))
+                .sizeIn(minWidth = 1.dp, minHeight = 22.dp)
+                .background(Color(0xFF383842))
         )
 
-        // Render special keys
+        // Render Special Keys
         for (key in keys) {
             KeyButton(
                 text = key,
@@ -96,13 +97,12 @@ fun KeyRow(
 }
 
 @Composable
-private fun CommandChip(text: String, accentColor: Color, onClick: () -> Unit) {
+private fun TouchBarChip(text: String, accentColor: Color, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier
-            .clickable(onClick = onClick),
+        modifier = Modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(6.dp),
-        color = CyberBgSurface,
-        border = BorderStroke(1.dp, accentColor)
+        color = AppleCardBg,
+        border = BorderStroke(0.8.dp, accentColor)
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)) {
             Text(
@@ -110,7 +110,7 @@ private fun CommandChip(text: String, accentColor: Color, onClick: () -> Unit) {
                 color = accentColor,
                 fontFamily = TerminalFontFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
+                fontSize = 11.sp
             )
         }
     }
@@ -120,18 +120,18 @@ private fun CommandChip(text: String, accentColor: Color, onClick: () -> Unit) {
 private fun KeyButton(text: String, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
-            .sizeIn(minWidth = 34.dp, minHeight = 30.dp)
+            .sizeIn(minWidth = 32.dp, minHeight = 28.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(6.dp),
-        color = CyberBgCard,
-        border = BorderStroke(0.8.dp, NeonGreen)
+        color = AppleCardBg,
+        border = BorderStroke(0.5.dp, Color(0xFF484856))
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
             Text(
                 text = text,
                 color = TextPrimary,
                 fontFamily = TerminalFontFamily,
-                fontSize = 12.sp
+                fontSize = 11.sp
             )
         }
     }
