@@ -7,7 +7,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import com.alertmesh.ui.terminal.components.okLine
 import com.alertmesh.ui.terminal.components.warnLine
-import com.alertmesh.ui.theme.TerminalGreen
+import com.alertmesh.ui.theme.AccentGreen
 
 object BootSequence {
     fun generateBootLines(
@@ -21,7 +21,7 @@ object BootSequence {
         val lines = mutableListOf<AnnotatedString>()
         
         lines.add(buildAnnotatedString {
-            withStyle(style = SpanStyle(color = TerminalGreen, fontWeight = FontWeight.Bold)) {
+            withStyle(style = SpanStyle(color = AccentGreen, fontWeight = FontWeight.Bold)) {
                 append("AlertMesh v0.1.0-rc1 . build 2026.07.30")
             }
         })
@@ -41,7 +41,7 @@ object BootSequence {
         
         lines.add(okLine("Listening."))
         lines.add(buildAnnotatedString {
-            withStyle(style = SpanStyle(color = TerminalGreen)) {
+            withStyle(style = SpanStyle(color = AccentGreen)) {
                 append("type /help for commands")
             }
         })

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.alertmesh.di.AppContainer
 import com.alertmesh.protocol.model.SosPayload
+import com.alertmesh.service.LocationData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,9 +27,20 @@ class EmergencyViewModel(
 
     fun triggerSos(payload: SosPayload) {
         viewModelScope.launch {
-            container.protocolEngine.sendSos(payload)
+            val location = container.locationManager.getCurrentLocation()
+            val newPayload = if (location != null) {
+                payload.copy(
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    accuracy = location.accuracy,
+                    fixAgeSeconds = location.fixAgeMs / 1000
+                )
+            } else {
+                payload
+            }
+            container.protocolEngine.sendSos(newPayload)
+            _uiState.update { it.copy(isAlarmActive = true, incomingSos = newPayload, senderFingerprint = "SELF") }
         }
-        _uiState.update { it.copy(isAlarmActive = true, incomingSos = payload, senderFingerprint = "SELF") }
     }
 
     fun dismissAlarm() {

@@ -17,6 +17,7 @@ import com.alertmesh.protocol.transport.SocketTransport
 import com.alertmesh.protocol.transport.Transport
 import com.alertmesh.service.MeshAudioManager
 import com.alertmesh.service.MeshLocationManager
+import com.alertmesh.service.NearbyTransport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -57,13 +58,18 @@ class AppContainer(private val context: Context) {
         PeerRepository(database.peerDao())
     }
 
+    val isEmulator: Boolean = android.os.Build.FINGERPRINT.contains("generic") || android.os.Build.PRODUCT.contains("sdk")
+
     val transport: Transport by lazy {
-        // Using local emulator address by default
-        SocketTransport(
-            localPeerId = cryptoProvider.getDeviceId(),
-            host = "10.0.2.2",
-            port = 9999
-        )
+        if (isEmulator) {
+            SocketTransport(
+                localPeerId = cryptoProvider.getDeviceId(),
+                host = "10.0.2.2",
+                port = 9999
+            )
+        } else {
+            NearbyTransport(context, cryptoProvider)
+        }
     }
 
     val digestSync: DigestSync by lazy {

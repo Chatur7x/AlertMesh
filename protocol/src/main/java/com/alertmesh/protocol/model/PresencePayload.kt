@@ -9,5 +9,9 @@ data class PresencePayload(
     val batteryPercent: Int,
     val hopCount: Int,
     val neighborCount: Int,
-    val timestamp: Long
+    val timestamp: Long,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val accuracy: Float? = null,
+    val hasSensor: Boolean = false
 )

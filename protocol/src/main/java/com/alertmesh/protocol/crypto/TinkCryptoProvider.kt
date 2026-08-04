@@ -84,8 +84,26 @@ class TinkCryptoProvider : CryptoProvider {
     }
 
     override fun deriveSessionKey(peerPublicKey: ByteArray): ByteArray {
+        val myPubKey = getPublicKey()
+        var cmp = 0
+        val minLen = kotlin.math.min(myPubKey.size, peerPublicKey.size)
+        for (i in 0 until minLen) {
+            val a = myPubKey[i].toInt() and 0xFF
+            val b = peerPublicKey[i].toInt() and 0xFF
+            if (a != b) {
+                cmp = a - b
+                break
+            }
+        }
+        if (cmp == 0) {
+            cmp = myPubKey.size - peerPublicKey.size
+        }
+        val combined = if (cmp <= 0) myPubKey + peerPublicKey else peerPublicKey + myPubKey
+        
+        val digest = MessageDigest.getInstance("SHA-256")
+        val hash = digest.digest(combined)
         sessionAeadKeysetHandle = KeysetHandle.generateNew(AeadKeyTemplates.AES256_GCM)
-        return ByteArray(0)
+        return hash
     }
 
     override fun encryptForRecipient(plaintext: ByteArray, recipientPublicKey: ByteArray): ByteArray {

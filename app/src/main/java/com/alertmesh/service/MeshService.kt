@@ -5,12 +5,15 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.alertmesh.AlertMeshApp
 import com.alertmesh.R
+import com.alertmesh.protocol.model.PresencePayload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,6 +35,32 @@ class MeshService : Service() {
         createNotificationChannel()
     }
 
+    private fun getBatteryPercent(): Int {
+        val intent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+        return if (level >= 0 && scale > 0) {
+            (level * 100f / scale).toInt()
+        } else {
+            0
+        }
+    }
+
+    private fun createPresencePayload(app: AlertMeshApp): PresencePayload {
+        val location = app.container.locationManager.getCurrentLocation()
+        return PresencePayload(
+            deviceId = app.container.cryptoProvider.getDeviceId(),
+            fingerprint = app.container.cryptoProvider.getFingerprint(),
+            batteryPercent = getBatteryPercent(),
+            hopCount = 0,
+            neighborCount = 0, // Using 0 if not immediately available
+            timestamp = System.currentTimeMillis(),
+            latitude = location?.latitude,
+            longitude = location?.longitude,
+            accuracy = location?.accuracy
+        )
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = NotificationCompat.Builder(this, "mesh_channel")
             .setContentTitle(getString(R.string.notification_title))
@@ -49,12 +78,23 @@ class MeshService : Service() {
             engine.start()
         }
 
+        app.container.locationManager.startLocationUpdates()
+        engine.startPresenceBroadcast { createPresencePayload(app) }
+
+        if (getBatteryPercent() < 20) {
+            engine.presenceIntervalMs = 30_000
+        } else {
+            engine.presenceIntervalMs = 10_000
+        }
+
         return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
         val app = application as AlertMeshApp
+        app.container.locationManager.stopLocationUpdates()
+        app.container.protocolEngine.stopPresenceBroadcast()
         app.container.protocolEngine.stop()
         serviceScope.cancel()
     }

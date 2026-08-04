@@ -4,8 +4,10 @@ import android.Manifest
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
@@ -28,11 +30,23 @@ class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        // Handle permissions
+        val fineLocation = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        var bluetoothScan = true
+        var bluetoothConnect = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            bluetoothScan = permissions[Manifest.permission.BLUETOOTH_SCAN] ?: false
+            bluetoothConnect = permissions[Manifest.permission.BLUETOOTH_CONNECT] ?: false
+        }
+        
+        if (!fineLocation || !bluetoothScan || !bluetoothConnect) {
+            Toast.makeText(this, "AlertMesh requires Location and Bluetooth permissions to form the mesh network", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        enableEdgeToEdge()
         
         val app = application as AlertMeshApp
         val container = app.container
@@ -83,6 +97,7 @@ class MainActivity : ComponentActivity() {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+            permissions.add(Manifest.permission.NEARBY_WIFI_DEVICES)
         }
         requestPermissionLauncher.launch(permissions.toTypedArray())
     }

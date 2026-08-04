@@ -38,18 +38,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.alertmesh.protocol.model.Condition
 import com.alertmesh.protocol.model.SosPayload
-import com.alertmesh.ui.theme.AppleCardBg
-import com.alertmesh.ui.theme.AppleCyan
-import com.alertmesh.ui.theme.AppleGreen
-import com.alertmesh.ui.theme.AppleInputBg
-import com.alertmesh.ui.theme.AppleRed
-import com.alertmesh.ui.theme.AppleRedGlow
-import com.alertmesh.ui.theme.AppleWindowBg
-import com.alertmesh.ui.theme.AppleYellow
+import com.alertmesh.ui.theme.AccentCyan
+import com.alertmesh.ui.theme.AccentGreen
+import com.alertmesh.ui.theme.AccentRed
+import com.alertmesh.ui.theme.AccentAmber
+import com.alertmesh.ui.theme.BgElevated
+import com.alertmesh.ui.theme.BgSurface
+import com.alertmesh.ui.theme.BgPrimary
 import com.alertmesh.ui.theme.TerminalFontFamily
 import com.alertmesh.ui.theme.TerminalTypography
 import com.alertmesh.ui.theme.TextPrimary
 import com.alertmesh.ui.theme.TextSecondary
+import com.alertmesh.ui.theme.BorderSubtle
 
 @Composable
 fun TriageForm(
@@ -68,16 +68,16 @@ fun TriageForm(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(AppleCardBg)
-            .border(BorderStroke(1.dp, AppleRedGlow), RoundedCornerShape(12.dp))
+            .background(BgElevated)
+            .border(BorderStroke(1.dp, AccentRed.copy(alpha = 0.5f)), RoundedCornerShape(12.dp))
             .padding(16.dp)
     ) {
         Text(
-            text = " EMERGENCY TRIAGE REPORT",
+            text = "EMERGENCY TRIAGE REPORT",
             fontFamily = TerminalFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
-            color = AppleRed
+            color = AccentRed
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -100,25 +100,25 @@ fun TriageForm(
             for (c in conditions) {
                 val isSelected = c == selectedCondition
                 val chipColor = when (c) {
-                    Condition.TRAPPED, Condition.INJURED -> AppleRed
-                    Condition.NEED_MEDICAL, Condition.NEED_WATER -> AppleYellow
-                    Condition.SAFE -> AppleGreen
+                    Condition.TRAPPED, Condition.INJURED -> AccentRed
+                    Condition.NEED_MEDICAL, Condition.NEED_WATER -> AccentAmber
+                    Condition.SAFE -> AccentGreen
                 }
 
                 Surface(
                     modifier = Modifier.clickable { selectedCondition = c },
                     shape = RoundedCornerShape(6.dp),
-                    color = if (isSelected) chipColor.copy(alpha = 0.2f) else AppleInputBg,
-                    border = BorderStroke(if (isSelected) 1.5.dp else 0.5.dp, if (isSelected) chipColor else TextSecondary.copy(alpha = 0.3f))
+                    color = if (isSelected) chipColor.copy(alpha = 0.15f) else BgSurface,
+                    border = BorderStroke(if (isSelected) 1.5.dp else 1.dp, if (isSelected) chipColor else BorderSubtle)
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Text(
                             text = c.name,
                             fontFamily = TerminalFontFamily,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                             fontSize = 11.sp,
                             color = if (isSelected) chipColor else TextSecondary
                         )
@@ -127,7 +127,7 @@ fun TriageForm(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // People & Injured Count Spinners
         Row(
@@ -142,14 +142,14 @@ fun TriageForm(
             )
 
             CounterPicker(
-                label = "INJURED COUNT",
+                label = "INJURED",
                 count = injuredCount,
                 onIncrement = { injuredCount++ },
                 onDecrement = { if (injuredCount > 0) injuredCount-- }
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Note Input
         Row(
@@ -160,26 +160,26 @@ fun TriageForm(
             Text("${note.length}/100", fontFamily = TerminalFontFamily, fontSize = 10.sp, color = TextSecondary)
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(6.dp))
-                .background(AppleInputBg)
-                .border(BorderStroke(0.5.dp, AppleCyan.copy(alpha = 0.5f)), RoundedCornerShape(6.dp))
-                .padding(8.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(BgSurface)
+                .border(BorderStroke(1.dp, BorderSubtle), RoundedCornerShape(8.dp))
+                .padding(10.dp)
         ) {
             BasicTextField(
                 value = note,
                 onValueChange = { if (it.length <= 100) note = it },
-                textStyle = TerminalTypography.bodyMedium.copy(color = TextPrimary, fontSize = 12.sp),
-                cursorBrush = SolidColor(AppleCyan),
+                textStyle = TerminalTypography.bodyMedium.copy(color = TextPrimary, fontSize = 13.sp),
+                cursorBrush = SolidColor(AccentCyan),
                 modifier = Modifier.fillMaxWidth()
             )
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Button(
             onClick = {
@@ -189,20 +189,22 @@ fun TriageForm(
                         injuredCount = injuredCount,
                         condition = selectedCondition,
                         note = note,
-                        latitude = 0.0,
-                        longitude = 0.0
+                        latitude = null,
+                        longitude = null,
+                        accuracy = null,
+                        fixAgeSeconds = null
                     )
                 )
             },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = AppleRed)
+            colors = ButtonDefaults.buttonColors(containerColor = AccentRed)
         ) {
             Text(
-                text = "BROADCAST SOS EMERGENCY MESH ALERT",
+                text = "BROADCAST SOS ALERT",
                 fontFamily = TerminalFontFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
+                fontSize = 13.sp,
                 color = Color.White
             )
         }
@@ -218,33 +220,33 @@ private fun CounterPicker(
 ) {
     Column {
         Text(text = label, fontFamily = TerminalFontFamily, fontSize = 10.sp, color = TextSecondary)
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
-                .background(AppleInputBg)
-                .border(BorderStroke(0.5.dp, TextSecondary.copy(alpha = 0.4f)), RoundedCornerShape(6.dp))
+                .clip(RoundedCornerShape(8.dp))
+                .background(BgSurface)
+                .border(BorderStroke(1.dp, BorderSubtle), RoundedCornerShape(8.dp))
                 .padding(horizontal = 6.dp, vertical = 4.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(24.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(AppleWindowBg)
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(BgPrimary)
                     .clickable { onDecrement() },
                 contentAlignment = Alignment.Center
             ) {
                 Text("-", color = TextPrimary, fontFamily = TerminalFontFamily, fontWeight = FontWeight.Bold)
             }
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(text = "$count", color = TextPrimary, fontFamily = TerminalFontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(text = "$count", color = TextPrimary, fontFamily = TerminalFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Spacer(modifier = Modifier.width(12.dp))
             Box(
                 modifier = Modifier
-                    .size(24.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(AppleWindowBg)
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(BgPrimary)
                     .clickable { onIncrement() },
                 contentAlignment = Alignment.Center
             ) {

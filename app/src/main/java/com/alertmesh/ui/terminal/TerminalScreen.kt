@@ -3,7 +3,6 @@ package com.alertmesh.ui.terminal
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -13,14 +12,19 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -36,7 +40,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -44,18 +50,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.alertmesh.ui.terminal.components.AppleTerminalHeader
-import com.alertmesh.ui.theme.AppleBgDark
-import com.alertmesh.ui.theme.AppleCardBg
-import com.alertmesh.ui.theme.AppleCyan
-import com.alertmesh.ui.theme.AppleGreen
-import com.alertmesh.ui.theme.AppleInputBg
-import com.alertmesh.ui.theme.AppleRed
-import com.alertmesh.ui.theme.AppleWindowBg
-import com.alertmesh.ui.theme.AppleYellow
-import com.alertmesh.ui.theme.TerminalFontFamily
-import com.alertmesh.ui.theme.TerminalTypography
-import com.alertmesh.ui.theme.TextPrimary
+import com.alertmesh.ui.theme.*
 
 @Composable
 fun TerminalScreen(
@@ -72,115 +67,164 @@ fun TerminalScreen(
         }
     }
 
-    // Dynamic Screen-Size Auto Scaling Box
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppleBgDark)
+            .background(BgPrimary)
+            .windowInsetsPadding(WindowInsets.systemBars)
     ) {
-        val screenWidth = maxWidth
-        val isSmallScreen = screenWidth < 360.dp
-        val isLargeScreen = screenWidth > 600.dp
-
-        // Dynamic responsive sizing calculations
-        val fontSize = if (isSmallScreen) 11.sp else if (isLargeScreen) 15.sp else 13.sp
-        val lineHeight = if (isSmallScreen) 16.sp else if (isLargeScreen) 22.sp else 18.sp
-        val horizontalPadding = if (isSmallScreen) 4.dp else if (isLargeScreen) 12.dp else 8.dp
+        val isCompact = maxWidth < 360.dp
+        val fontSize = if (isCompact) 12.sp else if (maxWidth > 600.dp) 15.sp else 13.sp
+        val hPad = if (isCompact) 12.dp else if (maxWidth > 600.dp) 24.dp else 16.dp
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // 1. Apple macOS Terminal Window Header Bar (Traffic Lights 🔴 🟡 🟢)
-            AppleTerminalHeader(
-                peerCount = uiState.peerCount,
-                currentChannel = uiState.currentChannel,
-                isConnected = uiState.isConnected,
-                screenWidthDp = screenWidth,
-                onNavigateToEmergency = onNavigateToEmergency
-            )
 
-            // 2. Terminal Log Window Body
+            // ─── Status Bar ─────────────────────────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(BgPrimary)
+                    .padding(horizontal = hPad, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Online dot
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(if (uiState.isConnected) AccentGreen else AccentRed)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "AlertMesh",
+                        color = TextPrimary,
+                        fontFamily = TerminalFontFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "${uiState.peerCount} peers",
+                        color = TextDim,
+                        fontFamily = TerminalFontFamily,
+                        fontSize = 12.sp
+                    )
+                }
+
+                // SOS button
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(GlowRed)
+                        .pointerInput(Unit) { detectTapGestures { onNavigateToEmergency() } }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "SOS",
+                        color = AccentRed,
+                        fontFamily = TerminalFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            // Subtle divider
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+
+            // ─── Log Area ───────────────────────────────────────
             LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = horizontalPadding, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                    .padding(vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 items(uiState.lines) { line ->
-                    Box(
+                    val accentColor = when (line.lineType) {
+                        "ok" -> AccentGreen
+                        "warn" -> AccentAmber
+                        "err" -> AccentRed
+                        "msg" -> AccentCyan
+                        else -> AccentCyan // info
+                    }
+
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(AppleCardBg.copy(alpha = 0.4f))
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                            .drawBehind {
+                                // Left accent bar
+                                drawRect(
+                                    color = accentColor,
+                                    topLeft = Offset(0f, 0f),
+                                    size = Size(width = 3.dp.toPx(), height = size.height)
+                                )
+                            }
+                            .padding(start = hPad, end = hPad, top = 6.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = line.text,
-                            style = TerminalTypography.bodyMedium.copy(
-                                fontSize = fontSize,
-                                lineHeight = lineHeight
-                            )
+                            fontFamily = TerminalFontFamily,
+                            fontSize = fontSize,
+                            lineHeight = fontSize * 1.5f
                         )
                     }
                 }
             }
 
-            // 3. Audio Recording TouchBar Indicator
-            AnimatedVisibility(
-                visible = isVoiceRecording,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
+            // ─── Voice Indicator ────────────────────────────────
+            AnimatedVisibility(visible = isVoiceRecording, enter = fadeIn(), exit = fadeOut()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(AppleWindowBg)
-                        .border(BorderStroke(1.dp, AppleYellow))
-                        .padding(8.dp),
+                        .background(BgElevated)
+                        .padding(horizontal = hPad, vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "🎙️ RECORDING VOICE NOTE (AMR-NB 12.2kbps)... RELEASE TO SEND",
+                        text = "Recording voice note — release to send",
                         fontFamily = TerminalFontFamily,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppleYellow
+                        fontSize = 12.sp,
+                        color = AccentAmber
                     )
                 }
             }
 
-            // 4. macOS TouchBar Quick Action Bar
+            // ─── Quick Commands ─────────────────────────────────
             KeyRow(
-                onKeyPress = { key ->
-                    viewModel.onInputChanged(uiState.currentInput + key)
-                },
-                onHistoryUp = { /* History Up */ },
-                onHistoryDown = { /* History Down */ },
+                onKeyPress = { key -> viewModel.onInputChanged(uiState.currentInput + key) },
+                onHistoryUp = { },
+                onHistoryDown = { },
                 onExecuteCommand = { cmd ->
-                    if (cmd == "/sos") {
-                        onNavigateToEmergency()
-                    } else {
-                        viewModel.onCommand(cmd)
-                    }
+                    if (cmd == "/sos") onNavigateToEmergency() else viewModel.onCommand(cmd)
                 }
             )
 
-            // 5. Apple zsh Terminal Console Input Line
+            // Subtle divider
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+
+            // ─── Input Console ──────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(AppleInputBg)
-                    .border(BorderStroke(0.5.dp, Color(0xFF33333E)))
-                    .padding(horizontal = horizontalPadding, vertical = 8.dp),
+                    .background(BgPrimary)
+                    .padding(horizontal = hPad, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "chatur@alertmesh % ",
-                    color = AppleGreen,
+                    text = "›",
+                    color = AccentGreen,
                     fontFamily = TerminalFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = fontSize
+                    fontSize = 16.sp
                 )
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 BasicTextField(
                     value = uiState.currentInput,
@@ -189,9 +233,9 @@ fun TerminalScreen(
                         color = TextPrimary,
                         fontSize = fontSize
                     ),
-                    cursorBrush = SolidColor(AppleGreen),
+                    cursorBrush = SolidColor(AccentGreen),
                     keyboardOptions = KeyboardOptions(
-                        autoCorrect = false,
+                        autoCorrectEnabled = false,
                         keyboardType = KeyboardType.Ascii,
                         imeAction = ImeAction.Send
                     ),
@@ -206,20 +250,17 @@ fun TerminalScreen(
                             }
                         }
                     ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 2.dp),
+                    modifier = Modifier.weight(1f),
                     singleLine = true
                 )
 
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-                // Push-To-Talk (PTT) Walkie-Talkie Button
+                // PTT Button
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isVoiceRecording) AppleYellow else AppleCardBg)
-                        .border(BorderStroke(1.dp, if (isVoiceRecording) AppleYellow else AppleCyan), RoundedCornerShape(6.dp))
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isVoiceRecording) AccentAmber else BgSurface)
                         .pointerInput(Unit) {
                             detectTapGestures(
                                 onPress = {
@@ -231,15 +272,15 @@ fun TerminalScreen(
                                 }
                             )
                         }
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (isVoiceRecording) "🔴 PTT" else "📻 PTT",
+                        text = if (isVoiceRecording) "●" else "PTT",
                         fontFamily = TerminalFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = if (isVoiceRecording) AppleInputBg else AppleCyan
+                        fontSize = 12.sp,
+                        color = if (isVoiceRecording) BgPrimary else TextSecondary
                     )
                 }
             }

@@ -6,6 +6,7 @@ import com.alertmesh.protocol.crypto.CryptoProvider
 import com.alertmesh.protocol.model.MessageEnvelope
 import com.alertmesh.protocol.model.MessageType
 import com.alertmesh.protocol.model.SosPayload
+import com.alertmesh.protocol.model.PresencePayload
 import com.alertmesh.protocol.routing.RateLimiter
 import com.alertmesh.protocol.routing.SuppressionTracker
 import com.alertmesh.protocol.sync.DigestSync
@@ -16,6 +17,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.protobuf.ProtoBuf
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
@@ -35,12 +38,23 @@ class ProtocolEngine(
     private var counter: Long = 0
     private var job: Job? = null
     private var peers = emptySet<String>()
+    private var presenceJob: Job? = null
+    var presenceIntervalMs: Long = 10_000
 
     fun start() {
         job = engineScope.launch {
             launch {
                 transport.discoveredPeers().collect { newPeers ->
+                    val addedPeers = newPeers - peers
                     peers = newPeers
+                    
+                    addedPeers.forEach { newPeer ->
+                        digestSync?.let { sync ->
+                            val digest = sync.createSyncReq()
+                            val payload = ProtoBuf.encodeToByteArray(ListSerializer(String.serializer()), digest)
+                            sendMessage(MessageType.SYNC_REQ, payload, ttl = 1, targetPeer = newPeer)
+                        }
+                    }
                 }
             }
             
@@ -52,6 +66,24 @@ class ProtocolEngine(
 
     fun stop() {
         job?.cancel()
+        stopPresenceBroadcast()
+    }
+
+    fun startPresenceBroadcast(presenceProvider: () -> PresencePayload) {
+        presenceJob?.cancel()
+        presenceJob = engineScope.launch {
+            while (true) {
+                val payload = presenceProvider()
+                val encoded = ProtoBuf.encodeToByteArray(PresencePayload.serializer(), payload)
+                sendMessage(MessageType.PRESENCE, encoded, channel = 0, ttl = 4)
+                delay(presenceIntervalMs)
+            }
+        }
+    }
+
+    fun stopPresenceBroadcast() {
+        presenceJob?.cancel()
+        presenceJob = null
     }
 
     private suspend fun processIncoming(senderPeerId: String, data: ByteArray) {
@@ -75,8 +107,28 @@ class ProtocolEngine(
             replayGuard.record(envelope.origin, envelope.counter)
             suppressionTracker.recordRebroadcast(envelope.msgId, senderPeerId)
             
-            // Deliver
-            messageListener(envelope)
+            // Deliver or handle Sync
+            when (envelope.type) {
+                MessageType.SYNC_REQ -> {
+                    digestSync?.let { sync ->
+                        val peerDigest = ProtoBuf.decodeFromByteArray(ListSerializer(String.serializer()), envelope.payload)
+                        val missingMessages = sync.handleSyncReq(peerDigest)
+                        val payload = ProtoBuf.encodeToByteArray(ListSerializer(MessageEnvelope.serializer()), missingMessages)
+                        sendMessage(MessageType.SYNC_RESP, payload, ttl = 1, targetPeer = senderPeerId)
+                    }
+                    return
+                }
+                MessageType.SYNC_RESP -> {
+                    digestSync?.let { sync ->
+                        val messages = ProtoBuf.decodeFromByteArray(ListSerializer(MessageEnvelope.serializer()), envelope.payload)
+                        sync.handleSyncResp(messages)
+                    }
+                    return
+                }
+                else -> {
+                    messageListener(envelope)
+                }
+            }
 
             // Relay
             val newTtl = envelope.ttl - 1
@@ -89,7 +141,7 @@ class ProtocolEngine(
                     transport.send(target, encoded)
                 }
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Drop malformed
         }
     }
@@ -98,7 +150,7 @@ class ProtocolEngine(
         knownPublicKeys[deviceId] = publicKey
     }
 
-    suspend fun sendMessage(type: MessageType, payload: ByteArray, channel: Int = 0, ttl: Int = 8) {
+    suspend fun sendMessage(type: MessageType, payload: ByteArray, channel: Int = 0, ttl: Int = 8, targetPeer: String? = null) {
         val msgCounter = ++counter
         val unsigned = MessageEnvelope(
             msgId = MessageEnvelope.newId(),
@@ -117,13 +169,22 @@ class ProtocolEngine(
         replayGuard.record(signed.origin, signed.counter)
         
         val encoded = ProtoBuf.encodeToByteArray(MessageEnvelope.serializer(), signed)
-        peers.forEach { target ->
-            transport.send(target, encoded)
+        
+        if (targetPeer != null) {
+            transport.send(targetPeer, encoded)
+        } else {
+            peers.forEach { target ->
+                transport.send(target, encoded)
+            }
         }
     }
 
     suspend fun sendSos(sosPayload: SosPayload) {
         val payload = ProtoBuf.encodeToByteArray(SosPayload.serializer(), sosPayload)
         sendMessage(MessageType.SOS, payload, channel = 0, ttl = 12)
+    }
+
+    suspend fun sendVoiceMessage(audioData: ByteArray, channel: Int = 1) {
+        sendMessage(MessageType.VOICE, audioData, channel = channel)
     }
 }

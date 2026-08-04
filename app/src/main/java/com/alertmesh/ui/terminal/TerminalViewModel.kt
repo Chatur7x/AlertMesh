@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.alertmesh.di.AppContainer
+import com.alertmesh.protocol.model.MessageType
 import com.alertmesh.protocol.model.SosPayload
 import com.alertmesh.ui.terminal.components.commandEcho
 import com.alertmesh.ui.terminal.components.errLine
@@ -16,7 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class TerminalLine(val text: AnnotatedString, val timestamp: Long)
+data class TerminalLine(val text: AnnotatedString, val timestamp: Long, val lineType: String = "info")
 
 data class TerminalUiState(
     val lines: List<TerminalLine> = emptyList(),
@@ -32,6 +33,9 @@ class TerminalViewModel(
 
     private val _uiState = MutableStateFlow(TerminalUiState())
     val uiState: StateFlow<TerminalUiState> = _uiState.asStateFlow()
+
+    private val commandHistory = mutableListOf<String>()
+    private var historyIndex = -1
 
     init {
         onBoot()
@@ -70,10 +74,10 @@ class TerminalViewModel(
         _uiState.update { it.copy(currentInput = text) }
     }
 
-    fun appendLine(text: AnnotatedString) {
+    fun appendLine(text: AnnotatedString, lineType: String = "info") {
         _uiState.update { state ->
             val newLines = state.lines.toMutableList()
-            newLines.add(TerminalLine(text, System.currentTimeMillis()))
+            newLines.add(TerminalLine(text, System.currentTimeMillis(), lineType))
             if (newLines.size > 500) {
                 newLines.removeAt(0)
             }
@@ -81,53 +85,77 @@ class TerminalViewModel(
         }
     }
 
+    fun onHistoryUp() {
+        if (commandHistory.isNotEmpty() && historyIndex < commandHistory.size - 1) {
+            historyIndex++
+            _uiState.update { it.copy(currentInput = commandHistory[commandHistory.size - 1 - historyIndex]) }
+        }
+    }
+
+    fun onHistoryDown() {
+        if (historyIndex > 0) {
+            historyIndex--
+            _uiState.update { it.copy(currentInput = commandHistory[commandHistory.size - 1 - historyIndex]) }
+        } else if (historyIndex == 0) {
+            historyIndex = -1
+            _uiState.update { it.copy(currentInput = "") }
+        }
+    }
+
     fun onCommand(input: String) {
         val trimmed = input.trim()
         if (trimmed.isEmpty()) return
         
-        appendLine(commandEcho(trimmed))
+        commandHistory.add(trimmed)
+        historyIndex = -1
+
+        appendLine(commandEcho(trimmed), "info")
         _uiState.update { it.copy(currentInput = "") }
         
         when (val cmd = CommandParser.parse(trimmed)) {
             is CommandParser.Command.Help -> {
-                appendLine(infoLine("Available commands:"))
-                appendLine(infoLine("/help - Show this message"))
-                appendLine(infoLine("/peers - List known peers"))
-                appendLine(infoLine("/ping <target> - Ping a peer"))
-                appendLine(infoLine("/msg <target> <text> - Send a message"))
-                appendLine(infoLine("/clear - Clear terminal"))
+                appendLine(infoLine("Available commands:"), "info")
+                appendLine(infoLine("/help - Show this message"), "info")
+                appendLine(infoLine("/peers - List known peers"), "info")
+                appendLine(infoLine("/ping <target> - Ping a peer"), "info")
+                appendLine(infoLine("/msg <target> <text> - Send a message"), "info")
+                appendLine(infoLine("/clear - Clear terminal"), "info")
             }
             is CommandParser.Command.Peers -> {
                 viewModelScope.launch {
                     val count = container.peerRepository.getOnlineCount()
-                    appendLine(okLine("Found $count online peers"))
+                    appendLine(okLine("Found $count online peers"), "ok")
                 }
             }
             is CommandParser.Command.Msg -> {
                 sendTextMessage(cmd.target, cmd.text)
-                appendLine(okLine("Message sent to ${cmd.target}"))
+                appendLine(okLine("Message sent to ${cmd.target}"), "ok")
             }
             is CommandParser.Command.Clear -> {
                 _uiState.update { it.copy(lines = emptyList()) }
             }
             is CommandParser.Command.Sos -> {
-                appendLine(errLine("Use Emergency UI for SOS"))
+                appendLine(errLine("Use Emergency UI for SOS"), "err")
             }
             is CommandParser.Command.Unknown -> {
                 if (trimmed.startsWith("/")) {
-                    appendLine(errLine("Unknown command. Type /help"))
+                    appendLine(errLine("Unknown command. Type /help"), "err")
                 } else {
-                    appendLine(errLine("Input must start with / for commands, or use Msg to chat"))
+                    appendLine(errLine("Input must start with / for commands, or use Msg to chat"), "err")
                 }
             }
             else -> {
-                appendLine(okLine("Command executed: ${cmd.javaClass.simpleName}"))
+                appendLine(okLine("Command executed: ${cmd.javaClass.simpleName}"), "ok")
             }
         }
     }
 
     fun sendTextMessage(target: String, text: String) {
-        // Assume text sending logic inside protocolEngine
+        viewModelScope.launch {
+            val textBytes = text.toByteArray(Charsets.UTF_8)
+            val encrypted = container.cryptoProvider.encryptAead(textBytes, target.toByteArray())
+            container.protocolEngine.sendMessage(MessageType.TEXT, encrypted)
+        }
     }
 
     fun sendSos(sosPayload: SosPayload) {
@@ -141,7 +169,13 @@ class TerminalViewModel(
     }
     
     fun stopVoice() {
-        container.audioManager.stopRecording()
+        val audioData = container.audioManager.stopRecording()
+        if (audioData.isNotEmpty()) {
+            viewModelScope.launch {
+                container.protocolEngine.sendVoiceMessage(audioData, uiState.value.currentChannel)
+                appendLine(okLine("Voice message sent"), "ok")
+            }
+        }
     }
 }
 
