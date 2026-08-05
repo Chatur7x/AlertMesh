@@ -28,16 +28,13 @@ class EmergencyViewModel(
     fun triggerSos(payload: SosPayload) {
         viewModelScope.launch {
             val location = container.locationManager.getCurrentLocation()
-            val newPayload = if (location != null) {
-                payload.copy(
-                    latitude = location.latitude,
-                    longitude = location.longitude,
-                    accuracy = location.accuracy,
-                    fixAgeSeconds = location.fixAgeMs / 1000
-                )
-            } else {
-                payload
-            }
+            val newPayload = payload.copy(
+                latitude = location?.latitude ?: payload.latitude,
+                longitude = location?.longitude ?: payload.longitude,
+                accuracy = location?.accuracy ?: payload.accuracy,
+                fixAgeSeconds = location?.let { it.fixAgeMs / 1000 } ?: payload.fixAgeSeconds,
+                pressureHpa = container.barometerManager.currentPressureHpa ?: payload.pressureHpa
+            )
             container.protocolEngine.sendSos(newPayload)
             _uiState.update { it.copy(isAlarmActive = true, incomingSos = newPayload, senderFingerprint = "SELF") }
         }

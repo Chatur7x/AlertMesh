@@ -58,7 +58,9 @@ class MeshService : Service() {
             timestamp = System.currentTimeMillis(),
             latitude = location?.latitude,
             longitude = location?.longitude,
-            accuracy = location?.accuracy
+            accuracy = location?.accuracy,
+            hasSensor = app.container.barometerManager.hasBarometer,
+            pressureHpa = app.container.barometerManager.currentPressureHpa
         )
     }
 
@@ -80,6 +82,7 @@ class MeshService : Service() {
         }
 
         app.container.locationManager.startLocationUpdates()
+        app.container.barometerManager.startListening()
         engine.startPresenceBroadcast { createPresencePayload(app) }
 
         if (getBatteryPercent() < 20) {
@@ -95,6 +98,7 @@ class MeshService : Service() {
         super.onDestroy()
         val app = application as AlertMeshApp
         app.container.locationManager.stopLocationUpdates()
+        app.container.barometerManager.stopListening()
         app.container.protocolEngine.stopPresenceBroadcast()
         app.container.protocolEngine.stop()
         serviceScope.cancel()

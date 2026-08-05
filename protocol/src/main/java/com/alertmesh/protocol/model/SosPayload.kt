@@ -11,7 +11,8 @@ data class SosPayload(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val accuracy: Float? = null,
-    val fixAgeSeconds: Long? = null
+    val fixAgeSeconds: Long? = null,
+    val pressureHpa: Float? = null
 ) {
     init {
         require(note.length <= 100) { "Note must be 100 characters or less" }

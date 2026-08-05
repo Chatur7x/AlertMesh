@@ -17,14 +17,31 @@ object DistanceEstimator {
         val n = 2.0
         val dist = 10.0.pow((refRssi - rssi) / (10 * n))
         return when {
-            dist < 5 -> "Very Close"
-            dist <= 30 -> "Nearby"
-            dist <= 100 -> "Some Distance"
-            else -> "Far"
+            dist < 5 -> "Very Close (<5m)"
+            dist <= 30 -> "Nearby (5-30m)"
+            dist <= 100 -> "Some Distance (30-100m)"
+            else -> "Far (>100m)"
         }
     }
 
     fun barometricHeight(localPressure: Float, remotePressure: Float): Double {
         return 8435.0 * ln(localPressure.toDouble() / remotePressure.toDouble())
+    }
+
+    fun estimateFloorLevel(groundPressureHpa: Float, victimPressureHpa: Float, averageFloorHeightMeters: Double = 3.0): Pair<Double, Int> {
+        val heightDeltaMeters = 8435.0 * ln(groundPressureHpa.toDouble() / victimPressureHpa.toDouble())
+        val estimatedFloor = (heightDeltaMeters / averageFloorHeightMeters).roundToInt()
+        return Pair(heightDeltaMeters, estimatedFloor)
+    }
+
+    fun formatFloorDescription(groundPressureHpa: Float, victimPressureHpa: Float): String {
+        val (heightMeters, floor) = estimateFloorLevel(groundPressureHpa, victimPressureHpa)
+        val absMeters = abs(heightMeters)
+        val formattedMeters = "%.1f".format(absMeters)
+        return when {
+            floor == 0 -> "Ground Level (±0.0m)"
+            floor > 0 -> "Floor +$floor (+$formattedMeters m above ground)"
+            else -> "Basement B${abs(floor)} (-$formattedMeters m below ground)"
+        }
     }
 }

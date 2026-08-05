@@ -14,5 +14,6 @@ data class PresencePayload(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val accuracy: Float? = null,
-    val hasSensor: Boolean = false
+    val hasSensor: Boolean = false,
+    val pressureHpa: Float? = null
 )

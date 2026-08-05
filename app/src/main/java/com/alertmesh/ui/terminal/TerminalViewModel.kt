@@ -68,7 +68,7 @@ class TerminalViewModel(
                 transport = transport,
                 peerCount = peerCount,
                 messageCount = messageCount,
-                hasBarometer = false,
+                hasBarometer = container.barometerManager.hasBarometer,
                 hasLocation = hasLocation
             )
 
@@ -177,6 +177,8 @@ class TerminalViewModel(
                     val transportStr = if (container.isEmulator) "Socket (10.0.2.2)" else "Nearby P2P (BLE + Wi-Fi Direct)"
                     val loc = container.locationManager.getCurrentLocation()
                     val locStr = if (loc != null) "${"%.4f".format(loc.latitude)}, ${"%.4f".format(loc.longitude)}" else "No GPS Fix"
+                    val press = container.barometerManager.currentPressureHpa
+                    val pressStr = if (press != null) "${"%.2f".format(press)} hPa (Active)" else if (container.barometerManager.hasBarometer) "Acquiring..." else "Unavailable"
                     appendLine(infoLine("=== NODE DIAGNOSTIC STATUS ==="), "info")
                     appendLine(infoLine("Device ID: $devId"), "info")
                     appendLine(infoLine("Fingerprint: $fp"), "info")
@@ -184,6 +186,7 @@ class TerminalViewModel(
                     appendLine(infoLine("Active Channel: ${uiState.value.currentChannel}"), "info")
                     appendLine(infoLine("Online Peers: ${uiState.value.peerCount}"), "info")
                     appendLine(infoLine("Location: $locStr"), "info")
+                    appendLine(infoLine("Barometer: $pressStr"), "info")
                 }
             }
 

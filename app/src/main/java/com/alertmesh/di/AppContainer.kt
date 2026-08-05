@@ -105,4 +105,8 @@ class AppContainer(private val context: Context) {
     val audioManager: MeshAudioManager by lazy {
         MeshAudioManager()
     }
+
+    val barometerManager: com.alertmesh.service.MeshBarometerManager by lazy {
+        com.alertmesh.service.MeshBarometerManager(context)
+    }
 }
