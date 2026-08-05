@@ -89,6 +89,11 @@ class AppContainer(private val context: Context) {
                 scope.launch {
                     messageRepository.saveMessage(envelope, 0)
                 }
+            },
+            peerPresenceListener = { presence, pubKey ->
+                scope.launch {
+                    peerRepository.updatePeer(presence, pubKey)
+                }
             }
         )
     }

@@ -1,7 +1,7 @@
 package com.alertmesh.service
 
 import android.content.Context
-import android.util.Base64
+import android.util.Log
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.AdvertisingOptions
 import com.google.android.gms.nearby.connection.ConnectionInfo
@@ -19,16 +19,14 @@ import com.google.android.gms.nearby.connection.Strategy
 import com.alertmesh.protocol.crypto.CryptoProvider
 import com.alertmesh.protocol.transport.Transport
 import com.alertmesh.protocol.transport.TransportFrame
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.runBlocking
-import kotlin.random.Random
 
 class NearbyTransport(private val context: Context, private val cryptoProvider: CryptoProvider) : Transport {
+    private val TAG = "AlertMesh-Nearby"
     private val connectionsClient: ConnectionsClient = Nearby.getConnectionsClient(context)
     private val SERVICE_ID = "com.alertmesh.mesh"
     private val strategy = Strategy.P2P_CLUSTER
@@ -51,18 +49,22 @@ class NearbyTransport(private val context: Context, private val cryptoProvider: 
 
     private val connectionLifecycleCallback = object : ConnectionLifecycleCallback() {
         override fun onConnectionInitiated(endpointId: String, connectionInfo: ConnectionInfo) {
-            runBlocking {
-                delay(Random.nextLong(100, 500))
-                connectionsClient.acceptConnection(endpointId, payloadCallback)
-            }
+            Log.d(TAG, "Connection initiated with endpoint: $endpointId (${connectionInfo.endpointName})")
+            connectionsClient.acceptConnection(endpointId, payloadCallback)
+                .addOnSuccessListener { Log.d(TAG, "Accepted connection to $endpointId") }
+                .addOnFailureListener { e -> Log.e(TAG, "Failed to accept connection to $endpointId", e) }
         }
         override fun onConnectionResult(endpointId: String, result: ConnectionResolution) {
             if (result.status.statusCode == ConnectionsStatusCodes.STATUS_OK) {
+                Log.d(TAG, "Connected to endpoint: $endpointId")
                 connectedEndpoints.add(endpointId)
                 _discoveredPeers.value = connectedEndpoints.toSet()
+            } else {
+                Log.w(TAG, "Connection failed to endpoint: $endpointId, status: ${result.status.statusCode}")
             }
         }
         override fun onDisconnected(endpointId: String) {
+            Log.d(TAG, "Disconnected from endpoint: $endpointId")
             connectedEndpoints.remove(endpointId)
             _discoveredPeers.value = connectedEndpoints.toSet()
         }
@@ -70,17 +72,26 @@ class NearbyTransport(private val context: Context, private val cryptoProvider: 
 
     private val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
+            Log.d(TAG, "Discovered endpoint: $endpointId (${info.endpointName})")
             connectionsClient.requestConnection(localPeerId, endpointId, connectionLifecycleCallback)
+                .addOnSuccessListener { Log.d(TAG, "Requested connection to $endpointId") }
+                .addOnFailureListener { e -> Log.e(TAG, "Failed connection request to $endpointId", e) }
         }
-        override fun onEndpointLost(endpointId: String) {}
+        override fun onEndpointLost(endpointId: String) {
+            Log.d(TAG, "Lost endpoint: $endpointId")
+        }
     }
 
     override suspend fun start() {
         val advertisingOptions = AdvertisingOptions.Builder().setStrategy(strategy).build()
         connectionsClient.startAdvertising(localPeerId, SERVICE_ID, connectionLifecycleCallback, advertisingOptions)
-        
+            .addOnSuccessListener { Log.d(TAG, "Advertising started successfully as $localPeerId") }
+            .addOnFailureListener { e -> Log.e(TAG, "Start advertising failed", e) }
+
         val discoveryOptions = DiscoveryOptions.Builder().setStrategy(strategy).build()
         connectionsClient.startDiscovery(SERVICE_ID, endpointDiscoveryCallback, discoveryOptions)
+            .addOnSuccessListener { Log.d(TAG, "Discovery started successfully") }
+            .addOnFailureListener { e -> Log.e(TAG, "Start discovery failed", e) }
     }
 
     override suspend fun stop() {
@@ -89,6 +100,7 @@ class NearbyTransport(private val context: Context, private val cryptoProvider: 
         connectionsClient.stopAllEndpoints()
         connectedEndpoints.clear()
         _discoveredPeers.value = emptySet()
+        Log.d(TAG, "NearbyTransport stopped")
     }
 
     override suspend fun send(targetPeerId: String, data: ByteArray) {

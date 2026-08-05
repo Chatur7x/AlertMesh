@@ -40,6 +40,8 @@ class MainActivity : ComponentActivity() {
         
         if (!fineLocation || !bluetoothScan || !bluetoothConnect) {
             Toast.makeText(this, "AlertMesh requires Location and Bluetooth permissions to form the mesh network", Toast.LENGTH_LONG).show()
+        } else {
+            startMeshService()
         }
     }
 

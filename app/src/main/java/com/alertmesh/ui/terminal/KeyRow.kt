@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.alertmesh.ui.theme.AccentAmber
 import com.alertmesh.ui.theme.AccentCyan
 import com.alertmesh.ui.theme.AccentGreen
 import com.alertmesh.ui.theme.AccentRed
@@ -40,9 +41,12 @@ fun KeyRow(
 
     val commands = listOf(
         "/peers" to AccentCyan,
+        "/status" to AccentCyan,
         "/ping" to AccentCyan,
-        "/msg" to AccentCyan,
+        "/fix" to AccentGreen,
+        "/send" to AccentCyan,
         "/sos" to AccentRed,
+        "/help" to AccentAmber,
         "/clear" to AccentGreen
     )
 
@@ -51,10 +55,13 @@ fun KeyRow(
             .fillMaxWidth()
             .background(BgPrimary)
             .horizontalScroll(scrollState)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        CommandChip(text = "▲", accentColor = AccentGreen, onClick = onHistoryUp)
+        CommandChip(text = "▼", accentColor = AccentGreen, onClick = onHistoryDown)
+
         for ((cmd, color) in commands) {
             CommandChip(
                 text = cmd,

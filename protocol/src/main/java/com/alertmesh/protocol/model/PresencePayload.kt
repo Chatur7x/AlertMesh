@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 data class PresencePayload(
     val deviceId: String,
     val fingerprint: String,
+    val publicKey: ByteArray = byteArrayOf(),
     val batteryPercent: Int,
     val hopCount: Int,
     val neighborCount: Int,

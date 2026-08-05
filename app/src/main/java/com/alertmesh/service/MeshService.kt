@@ -51,9 +51,10 @@ class MeshService : Service() {
         return PresencePayload(
             deviceId = app.container.cryptoProvider.getDeviceId(),
             fingerprint = app.container.cryptoProvider.getFingerprint(),
+            publicKey = app.container.cryptoProvider.getPublicKey(),
             batteryPercent = getBatteryPercent(),
             hopCount = 0,
-            neighborCount = 0, // Using 0 if not immediately available
+            neighborCount = 0,
             timestamp = System.currentTimeMillis(),
             latitude = location?.latitude,
             longitude = location?.longitude,

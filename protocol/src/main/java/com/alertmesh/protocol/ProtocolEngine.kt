@@ -32,6 +32,7 @@ class ProtocolEngine(
     private val suppressionTracker: SuppressionTracker,
     private val digestSync: DigestSync?,
     private val messageListener: (MessageEnvelope) -> Unit,
+    private val peerPresenceListener: ((PresencePayload, ByteArray) -> Unit)? = null,
     private val engineScope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 ) {
     private val knownPublicKeys = ConcurrentHashMap<String, ByteArray>()
@@ -39,6 +40,7 @@ class ProtocolEngine(
     private var job: Job? = null
     private var peers = emptySet<String>()
     private var presenceJob: Job? = null
+    private var presenceProvider: (() -> PresencePayload)? = null
     var presenceIntervalMs: Long = 10_000
 
     fun start() {
@@ -49,10 +51,19 @@ class ProtocolEngine(
                     peers = newPeers
                     
                     addedPeers.forEach { newPeer ->
+                        presenceProvider?.let { provider ->
+                            try {
+                                val payload = provider()
+                                val encoded = ProtoBuf.encodeToByteArray(PresencePayload.serializer(), payload)
+                                sendMessage(MessageType.PRESENCE, encoded, channel = 0, ttl = 2, targetPeer = newPeer)
+                            } catch (_: Exception) {}
+                        }
                         digestSync?.let { sync ->
-                            val digest = sync.createSyncReq()
-                            val payload = ProtoBuf.encodeToByteArray(ListSerializer(String.serializer()), digest)
-                            sendMessage(MessageType.SYNC_REQ, payload, ttl = 1, targetPeer = newPeer)
+                            try {
+                                val digest = sync.createSyncReq()
+                                val payload = ProtoBuf.encodeToByteArray(ListSerializer(String.serializer()), digest)
+                                sendMessage(MessageType.SYNC_REQ, payload, ttl = 1, targetPeer = newPeer)
+                            } catch (_: Exception) {}
                         }
                     }
                 }
@@ -69,13 +80,16 @@ class ProtocolEngine(
         stopPresenceBroadcast()
     }
 
-    fun startPresenceBroadcast(presenceProvider: () -> PresencePayload) {
+    fun startPresenceBroadcast(provider: () -> PresencePayload) {
+        presenceProvider = provider
         presenceJob?.cancel()
         presenceJob = engineScope.launch {
             while (true) {
-                val payload = presenceProvider()
-                val encoded = ProtoBuf.encodeToByteArray(PresencePayload.serializer(), payload)
-                sendMessage(MessageType.PRESENCE, encoded, channel = 0, ttl = 4)
+                try {
+                    val payload = provider()
+                    val encoded = ProtoBuf.encodeToByteArray(PresencePayload.serializer(), payload)
+                    sendMessage(MessageType.PRESENCE, encoded, channel = 0, ttl = 4)
+                } catch (_: Exception) {}
                 delay(presenceIntervalMs)
             }
         }
@@ -96,19 +110,40 @@ class ProtocolEngine(
             
             if (!rateLimiter.tryConsume(senderPeerId)) return
 
-            // Verification
-            val originPubKey = knownPublicKeys[envelope.origin] 
-                ?: if (envelope.origin == cryptoProvider.getDeviceId()) cryptoProvider.getPublicKey() else return // Missing public key, drop
+            // Verification & Key Bootstrap
+            var originPubKey = knownPublicKeys[envelope.origin] 
+                ?: if (envelope.origin == cryptoProvider.getDeviceId()) cryptoProvider.getPublicKey() else null
+
+            if (originPubKey == null && envelope.type == MessageType.PRESENCE) {
+                try {
+                    val presence = ProtoBuf.decodeFromByteArray(PresencePayload.serializer(), envelope.payload)
+                    if (presence.publicKey.isNotEmpty()) {
+                        originPubKey = presence.publicKey
+                    }
+                } catch (_: Exception) {}
+            }
+
+            if (originPubKey == null) return // Missing public key, drop
 
             val signable = envelope.signable()
             if (!cryptoProvider.verify(originPubKey, signable, envelope.signature)) return
+
+            // Store discovered key
+            knownPublicKeys[envelope.origin] = originPubKey
 
             // Record
             replayGuard.record(envelope.origin, envelope.counter)
             suppressionTracker.recordRebroadcast(envelope.msgId, senderPeerId)
             
-            // Deliver or handle Sync
+            // Deliver or handle Sync / Presence
             when (envelope.type) {
+                MessageType.PRESENCE -> {
+                    try {
+                        val presence = ProtoBuf.decodeFromByteArray(PresencePayload.serializer(), envelope.payload)
+                        peerPresenceListener?.invoke(presence, originPubKey)
+                    } catch (_: Exception) {}
+                    messageListener(envelope)
+                }
                 MessageType.SYNC_REQ -> {
                     digestSync?.let { sync ->
                         val peerDigest = ProtoBuf.decodeFromByteArray(ListSerializer(String.serializer()), envelope.payload)
@@ -116,14 +151,12 @@ class ProtocolEngine(
                         val payload = ProtoBuf.encodeToByteArray(ListSerializer(MessageEnvelope.serializer()), missingMessages)
                         sendMessage(MessageType.SYNC_RESP, payload, ttl = 1, targetPeer = senderPeerId)
                     }
-                    return
                 }
                 MessageType.SYNC_RESP -> {
                     digestSync?.let { sync ->
                         val messages = ProtoBuf.decodeFromByteArray(ListSerializer(MessageEnvelope.serializer()), envelope.payload)
                         sync.handleSyncResp(messages)
                     }
-                    return
                 }
                 else -> {
                     messageListener(envelope)

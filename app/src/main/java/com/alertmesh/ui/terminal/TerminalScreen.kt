@@ -198,8 +198,8 @@ fun TerminalScreen(
             // ─── Quick Commands ─────────────────────────────────
             KeyRow(
                 onKeyPress = { key -> viewModel.onInputChanged(uiState.currentInput + key) },
-                onHistoryUp = { },
-                onHistoryDown = { },
+                onHistoryUp = { viewModel.onHistoryUp() },
+                onHistoryDown = { viewModel.onHistoryDown() },
                 onExecuteCommand = { cmd ->
                     if (cmd == "/sos") onNavigateToEmergency() else viewModel.onCommand(cmd)
                 }
