@@ -12,5 +12,6 @@ data class PeerEntity(
     val lastSeen: Long,
     val hopCount: Int,
     val batteryPercent: Int,
-    val isOnline: Boolean
+    val isOnline: Boolean,
+    val pressureHpa: Float? = null
 )

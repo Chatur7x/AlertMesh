@@ -20,7 +20,8 @@ class PeerRepository(private val peerDao: PeerDao) {
             lastSeen = System.currentTimeMillis(),
             hopCount = 0,
             batteryPercent = presence.batteryPercent,
-            isOnline = true
+            isOnline = true,
+            pressureHpa = presence.pressureHpa
         )
         peerDao.upsert(entity)
     }

@@ -147,8 +147,13 @@ class TerminalViewModel(
                     if (onlinePeers.isEmpty()) {
                         appendLine(warnLine("No peers connected yet. Run /fix or bring devices near each other."), "warn")
                     } else {
+                        val localPress = container.barometerManager.currentPressureHpa
                         onlinePeers.forEach { p ->
-                            appendLine(infoLine(" • Peer [${p.fingerprint}] Bat: ${p.batteryPercent}% ID: ${p.deviceId.take(8)}..."), "msg")
+                            val peerPress = p.pressureHpa
+                            val floorStr = if (localPress != null && peerPress != null) {
+                                " | " + com.alertmesh.protocol.routing.DistanceEstimator.formatFloorDescription(localPress, peerPress)
+                            } else ""
+                            appendLine(infoLine(" • Peer [${p.fingerprint}] Bat: ${p.batteryPercent}%$floorStr | ID: ${p.deviceId.take(8)}..."), "msg")
                         }
                     }
                 }
