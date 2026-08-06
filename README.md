@@ -9,7 +9,6 @@
   <img src="https://img.shields.io/badge/UI-Jetpack%20Compose-blue?logo=jetpackcompose" />
   <img src="https://img.shields.io/badge/Crypto-Google%20Tink-orange" />
   <img src="https://img.shields.io/badge/Transport-Nearby%20Connections-red?logo=google" />
-  <img src="https://img.shields.io/badge/License-MIT-yellow" />
 </p>
 
 ---
