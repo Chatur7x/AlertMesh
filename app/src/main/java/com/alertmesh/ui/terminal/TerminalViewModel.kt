@@ -54,8 +54,8 @@ class TerminalViewModel(
 
     private fun observePeers() {
         viewModelScope.launch {
-            container.peerRepository.getAllPeers().collect { peerList ->
-                val onlineCount = peerList.count { it.isOnline }
+            container.transport.discoveredPeers().collect { peerIds ->
+                val onlineCount = peerIds.size
                 _uiState.update { it.copy(peerCount = onlineCount, isConnected = onlineCount > 0) }
             }
         }
@@ -96,14 +96,14 @@ class TerminalViewModel(
                         appendLine(infoLine("[CH ${msg.channel}] ${msg.origin.take(8)}...: $text"), "msg")
                     } catch (_: Exception) {}
                 }
-                messages.lastOrNull { it.origin != localDeviceId && it.type == MessageType.VOICE.name }?.let { voice ->
+                messages.firstOrNull { it.origin != localDeviceId && it.type == MessageType.VOICE.name }?.let { voice ->
                     if (latestVoicePayload != voice.payload) {
                         latestVoicePayload = voice.payload
                         _uiState.update { it.copy(hasVoiceNote = true) }
                         appendLine(infoLine("Voice note received from ${voice.origin.take(8)}. Tap PLAY VOICE to listen."), "msg")
                     }
                 }
-                messages.lastOrNull { it.origin != localDeviceId && it.type == MessageType.SOS.name }?.let { sos ->
+                messages.firstOrNull { it.origin != localDeviceId && it.type == MessageType.SOS.name }?.let { sos ->
                     if (sos.msgId !in displayedMsgIds) {
                         displayedMsgIds.add(sos.msgId)
                         appendLine(errLine("Incoming SOS from ${sos.origin.take(8)}. Open SOS for details."), "err")
@@ -117,7 +117,7 @@ class TerminalViewModel(
         viewModelScope.launch {
             val fingerprint = container.cryptoProvider.getFingerprint()
             val transport = if (container.isEmulator) "Socket (10.0.2.2)" else "Nearby P2P (BLE+WiFi)"
-            val peerCount = container.peerRepository.getOnlineCount()
+            val peerCount = container.transport.discoveredPeers().first().size
             val messageCount = container.messageRepository.getMessageCount()
             val hasLocation = container.locationManager.getCurrentLocation() != null
 
@@ -201,13 +201,13 @@ class TerminalViewModel(
             is CommandParser.Command.Peers -> {
                 viewModelScope.launch {
                     val peers = container.peerRepository.getAllPeers().first()
-                    val onlinePeers = peers.filter { it.isOnline }
-                    appendLine(okLine("Found ${onlinePeers.size} active mesh peers (${peers.size} total known):"), "ok")
-                    if (onlinePeers.isEmpty()) {
+                    val connectedCount = container.transport.discoveredPeers().first().size
+                    appendLine(okLine("$connectedCount connected mesh peers (${peers.size} known):"), "ok")
+                    if (connectedCount == 0) {
                         appendLine(warnLine("No peers connected yet. Run /fix or bring devices near each other."), "warn")
                     } else {
                         val localPress = container.barometerManager.currentPressureHpa
-                        onlinePeers.forEach { p ->
+                        peers.forEach { p ->
                             val peerPress = p.pressureHpa
                             val floorStr = if (localPress != null && peerPress != null) {
                                 " | " + com.alertmesh.protocol.routing.DistanceEstimator.formatFloorDescription(localPress, peerPress)

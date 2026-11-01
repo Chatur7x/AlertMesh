@@ -5,11 +5,13 @@ import android.animation.ValueAnimator
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -122,7 +124,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (requiredPermissions().all {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }) startMeshService()
+    }
+
     private fun requestPermissions() {
+        requestPermissionLauncher.launch(requiredPermissions().toTypedArray())
+    }
+
+    private fun requiredPermissions(): List<String> {
         val permissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -137,7 +150,7 @@ class MainActivity : ComponentActivity() {
             permissions.add(Manifest.permission.POST_NOTIFICATIONS)
             permissions.add(Manifest.permission.NEARBY_WIFI_DEVICES)
         }
-        requestPermissionLauncher.launch(permissions.toTypedArray())
+        return permissions
     }
 
     private fun startMeshService() {

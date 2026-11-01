@@ -2,7 +2,7 @@ package com.alertmesh.service
 
 import android.annotation.SuppressLint
 import android.media.AudioFormat
-import android.media.AudioManager
+import android.media.AudioAttributes
 import android.media.AudioRecord
 import android.media.AudioTrack
 import android.media.MediaCodec
@@ -103,50 +103,87 @@ class MeshAudioManager {
     }
 
     suspend fun playAudio(data: ByteArray) = withContext(Dispatchers.IO) {
-        val audioTrack = AudioTrack(
-            AudioManager.STREAM_VOICE_CALL,
-            sampleRate,
-            channelConfigOut,
-            audioFormat,
-            bufferSizeOut,
-            AudioTrack.MODE_STREAM
-        )
-        audioTrack.play()
-
+        // AMR-NB's first byte identifies a 20 ms frame. Feed frames separately;
+        // queuing the whole note as one codec buffer decodes only its first frame.
+        val frameSizes = intArrayOf(13, 14, 16, 18, 20, 21, 27, 32, 6, 0, 0, 0, 0, 0, 0, 1)
+        val audioTrack = AudioTrack.Builder()
+            .setAudioAttributes(AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+            .setAudioFormat(AudioFormat.Builder().setSampleRate(sampleRate)
+                .setChannelMask(channelConfigOut).setEncoding(audioFormat).build())
+            .setBufferSizeInBytes(bufferSizeOut)
+            .setTransferMode(AudioTrack.MODE_STREAM).build()
         val codec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_AUDIO_AMR_NB)
         val format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AMR_NB, sampleRate, 1)
         codec.configure(format, null, null, 0)
-        codec.start()
+        try {
+            codec.start()
+            audioTrack.play()
+            val info = MediaCodec.BufferInfo()
+            var offset = 0
+            var frameIndex = 0L
+            var idleCount = 0
 
-        val info = MediaCodec.BufferInfo()
-        var offset = 0
-
-        while (offset < data.size) {
-            val inputBufferIndex = codec.dequeueInputBuffer(10000)
-            if (inputBufferIndex >= 0) {
-                val inputBuffer = codec.getInputBuffer(inputBufferIndex)
-                inputBuffer?.clear()
-                val chunkSize = minOf(data.size - offset, inputBuffer?.capacity() ?: 0)
-                inputBuffer?.put(data, offset, chunkSize)
-                codec.queueInputBuffer(inputBufferIndex, 0, chunkSize, 0, 0)
-                offset += chunkSize
+            while (offset < data.size) {
+                val frameType = (data[offset].toInt() and 0xff) shr 3 and 0x0f
+                val frameSize = frameSizes[frameType]
+                require(frameSize > 0 && offset + frameSize <= data.size) { "Invalid AMR voice frame" }
+                val inputIndex = codec.dequeueInputBuffer(10_000)
+                if (inputIndex < 0) {
+                    if (++idleCount > 100) error("Voice decoder stalled")
+                    continue
+                }
+                idleCount = 0
+                codec.getInputBuffer(inputIndex)!!.apply {
+                    clear()
+                    put(data, offset, frameSize)
+                }
+                codec.queueInputBuffer(inputIndex, 0, frameSize, frameIndex++ * 20_000, 0)
+                offset += frameSize
+                while (true) {
+                    val outputIndex = codec.dequeueOutputBuffer(info, 0)
+                    if (outputIndex < 0) break
+                    val output = codec.getOutputBuffer(outputIndex)!!
+                    output.position(info.offset)
+                    output.limit(info.offset + info.size)
+                    while (output.hasRemaining()) {
+                        check(audioTrack.write(output, output.remaining(), AudioTrack.WRITE_BLOCKING) > 0) {
+                            "Voice playback output failed"
+                        }
+                    }
+                    codec.releaseOutputBuffer(outputIndex, false)
+                }
             }
-
-            var outputBufferIndex = codec.dequeueOutputBuffer(info, 10000)
-            while (outputBufferIndex >= 0) {
-                val outputBuffer = codec.getOutputBuffer(outputBufferIndex)
-                val pcmData = ByteArray(info.size)
-                outputBuffer?.get(pcmData)
-                outputBuffer?.clear()
-                audioTrack.write(pcmData, 0, pcmData.size)
-                codec.releaseOutputBuffer(outputBufferIndex, false)
-                outputBufferIndex = codec.dequeueOutputBuffer(info, 10000)
+            var inputIndex: Int
+            do { inputIndex = codec.dequeueInputBuffer(10_000) } while (inputIndex < 0)
+            codec.queueInputBuffer(inputIndex, 0, 0, frameIndex * 20_000, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+            idleCount = 0
+            while (true) {
+                val outputIndex = codec.dequeueOutputBuffer(info, 10_000)
+                if (outputIndex < 0) {
+                    if (++idleCount > 100) error("Voice decoder did not finish")
+                    continue
+                }
+                idleCount = 0
+                val output = codec.getOutputBuffer(outputIndex)!!
+                output.position(info.offset)
+                output.limit(info.offset + info.size)
+                while (output.hasRemaining()) {
+                    check(audioTrack.write(output, output.remaining(), AudioTrack.WRITE_BLOCKING) > 0) {
+                        "Voice playback output failed"
+                    }
+                }
+                val finished = info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0
+                codec.releaseOutputBuffer(outputIndex, false)
+                if (finished) break
             }
+        } finally {
+            codec.stop()
+            codec.release()
+            audioTrack.stop()
+            audioTrack.release()
         }
-        codec.stop()
-        codec.release()
-        audioTrack.stop()
-        audioTrack.release()
     }
 
     fun isLiveMode(hopCount: Int): Boolean = hopCount <= 1

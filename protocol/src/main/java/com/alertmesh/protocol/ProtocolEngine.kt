@@ -175,8 +175,21 @@ class ProtocolEngine(
                     digestSync?.let { sync ->
                         val peerDigest = ProtoBuf.decodeFromByteArray(ListSerializer(String.serializer()), deliveredEnvelope.payload)
                         val missingMessages = sync.handleSyncReq(peerDigest)
-                        val payload = ProtoBuf.encodeToByteArray(ListSerializer(MessageEnvelope.serializer()), missingMessages)
-                        sendMessage(MessageType.SYNC_RESP, payload, ttl = 1, targetPeer = senderPeerId)
+                        val batch = mutableListOf<MessageEnvelope>()
+                        suspend fun sendBatch() {
+                            if (batch.isEmpty()) return
+                            val payload = ProtoBuf.encodeToByteArray(ListSerializer(MessageEnvelope.serializer()), batch)
+                            sendMessage(MessageType.SYNC_RESP, payload, ttl = 1, targetPeer = senderPeerId)
+                            batch.clear()
+                        }
+                        for (missing in missingMessages) {
+                            val candidate = batch + missing
+                            val size = ProtoBuf.encodeToByteArray(ListSerializer(MessageEnvelope.serializer()), candidate).size
+                            if (size > MAX_FRAME_SIZE - 2048) sendBatch()
+                            val singleSize = ProtoBuf.encodeToByteArray(ListSerializer(MessageEnvelope.serializer()), listOf(missing)).size
+                            if (singleSize <= MAX_FRAME_SIZE - 2048) batch.add(missing)
+                        }
+                        sendBatch()
                     }
                 }
                 MessageType.SYNC_RESP -> {

@@ -7,6 +7,7 @@ import com.alertmesh.data.db.RoomSyncStore
 import com.alertmesh.data.repository.MessageRepository
 import com.alertmesh.data.repository.PeerRepository
 import com.alertmesh.protocol.ProtocolEngine
+import com.alertmesh.protocol.model.MessageType
 import com.alertmesh.protocol.cache.DedupCache
 import com.alertmesh.protocol.cache.ReplayGuard
 import com.alertmesh.protocol.crypto.TinkCryptoProvider
@@ -104,8 +105,8 @@ class AppContainer(private val context: Context) {
             suppressionTracker = suppressionTracker,
             digestSync = digestSync,
             messageListener = { envelope ->
-                scope.launch {
-                    messageRepository.saveMessage(envelope, 0)
+                if (envelope.type != MessageType.PRESENCE) {
+                    scope.launch { messageRepository.saveMessage(envelope, 0) }
                 }
             },
             peerPresenceListener = { presence, pubKey ->

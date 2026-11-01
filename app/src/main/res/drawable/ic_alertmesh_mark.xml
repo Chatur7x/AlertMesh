@@ -1,12 +1,87 @@
-<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="64dp" android:height="64dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#CF414A" android:pathData="M22,8 L86,8 Q100,8 100,22 L100,86 Q100,100 86,100 L22,100 Q8,100 8,86 L8,22 Q8,8 22,8 Z" />
-    <path android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="8" android:strokeLineCap="round" android:strokeLineJoin="round"
-        android:pathData="M30,75 L51,33 Q54,27 57,33 L78,75" />
-    <path android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="7" android:strokeLineCap="round" android:pathData="M42,60 L66,60" />
-    <path android:fillColor="#FFFFFFFF" android:pathData="M54,21 a5,5 0,1 0,0.1 0" />
+    android:width="46dp"
+    android:height="46dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Obsidian Midnight Background Squircle -->
+    <path
+        android:fillColor="#0B0F19"
+        android:pathData="M22,8 L86,8 Q100,8 100,22 L100,86 Q100,100 86,100 L22,100 Q8,100 8,86 L8,22 Q8,8 22,8 Z" />
+
+    <!-- Outer Tactical Shield / Hex Perimeter -->
+    <path
+        android:strokeColor="#3300E5FF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#0D00E5FF"
+        android:pathData="M54,20 L80,32 L80,62 L54,88 L28,62 L28,32 Z" />
+
+    <!-- Inner Protective Shield Frame -->
+    <path
+        android:strokeColor="#6600E5FF"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M54,26 L74,36 L74,60 L54,80 L34,60 L34,36 Z" />
+
+    <!-- Concentric Radio Pulse Arc 1 (Outer) -->
+    <path
+        android:strokeColor="#4DFF3B30"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M40,43 C44,38 64,38 68,43" />
+    <path
+        android:strokeColor="#4DFF3B30"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M40,65 C44,70 64,70 68,65" />
+
+    <!-- Concentric Radio Pulse Arc 2 (Inner) -->
+    <path
+        android:strokeColor="#99FF3B30"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M45,47 C48,44 60,44 63,47" />
+    <path
+        android:strokeColor="#99FF3B30"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M45,61 C48,64 60,64 63,61" />
+
+    <!-- Mesh Interconnection Network Lines -->
+    <path
+        android:strokeColor="#8000E5FF"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:pathData="M54,34 L54,54 M54,54 L54,74 M38,44 L54,54 M70,44 L54,54 M38,64 L54,54 M70,64 L54,54" />
+    <path
+        android:strokeColor="#4000E5FF"
+        android:strokeWidth="1.2"
+        android:pathData="M54,34 L70,44 L70,64 L54,74 L38,64 L38,44 Z" />
+
+    <!-- Decentralized Mesh Nodes (Outer Relays) -->
+    <path android:fillColor="#00E5FF" android:pathData="M54,34 m-2.5,0 a2.5,2.5 0 1,1 5,0 a2.5,2.5 0 1,1 -5,0" />
+    <path android:fillColor="#00E5FF" android:pathData="M70,44 m-2.5,0 a2.5,2.5 0 1,1 5,0 a2.5,2.5 0 1,1 -5,0" />
+    <path android:fillColor="#00E5FF" android:pathData="M70,64 m-2.5,0 a2.5,2.5 0 1,1 5,0 a2.5,2.5 0 1,1 -5,0" />
+    <path android:fillColor="#00E5FF" android:pathData="M54,74 m-2.5,0 a2.5,2.5 0 1,1 5,0 a2.5,2.5 0 1,1 -5,0" />
+    <path android:fillColor="#00E5FF" android:pathData="M38,64 m-2.5,0 a2.5,2.5 0 1,1 5,0 a2.5,2.5 0 1,1 -5,0" />
+    <path android:fillColor="#00E5FF" android:pathData="M38,44 m-2.5,0 a2.5,2.5 0 1,1 5,0 a2.5,2.5 0 1,1 -5,0" />
+
+    <!-- Central Alert Beacon Halo & Core -->
+    <path
+        android:fillColor="#33FF3B30"
+        android:pathData="M54,54 m-9,0 a9,9 0 1,1 18,0 a9,9 0 1,1 -18,0" />
+    <path
+        android:fillColor="#FF3B30"
+        android:pathData="M54,54 m-5.5,0 a5.5,5.5 0 1,1 11,0 a5.5,5.5 0 1,1 -11,0" />
+    <path
+        android:fillColor="#FFFFCC00"
+        android:pathData="M54,54 m-2,0 a2,2 0 1,1 4,0 a2,2 0 1,1 -4,0" />
 </vector>

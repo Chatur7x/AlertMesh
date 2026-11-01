@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class EmergencyUiState(
@@ -70,7 +71,7 @@ class EmergencyViewModel(
                     ProtoBuf.encodeToByteArray(SosPayload.serializer(), newPayload),
                     channel = 0, ttl = 12
                 )
-                val peers = container.peerRepository.getOnlineCount()
+                val peers = container.transport.discoveredPeers().first().size
                 container.messageRepository.saveMessage(envelope, 0, if (peers == 0) "queued" else "sent")
                 _uiState.update {
                     it.copy(

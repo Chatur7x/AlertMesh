@@ -21,6 +21,9 @@ interface MessageDao {
     @Query("SELECT msgId FROM messages")
     suspend fun getAllMsgIds(): List<String>
 
+    @Query("SELECT msgId FROM messages WHERE type IN ('TEXT', 'SOS', 'VOICE')")
+    suspend fun getSyncMsgIds(): List<String>
+
     @Query("SELECT COUNT(*) FROM messages")
     suspend fun getMessageCount(): Int
 

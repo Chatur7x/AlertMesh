@@ -1,5 +1,17 @@
 # AlertMesh — Feature Verification Matrix
 
+## Two-phone Nearby verification — 2026-11-01
+
+- Devices: Samsung SM-M307F (Android API 30, USB) and Pixel 8a (API 37, wireless ADB), both running `com.alertmesh.devtest`. Each discovered the other over Nearby and showed one live connected peer.
+- Samsung → Pixel TEXT: `NEARBY_TEST_20261101_1` appeared exactly on the Pixel activity view. Samsung → Pixel SOS: the Pixel showed an incoming SOS and its report contained `TRAPPED` and the source ID.
+- Samsung → Pixel VOICE: the Pixel displayed a received voice note. Initial playback was silent/distorted. The decoder now parses each AMR-NB frame and routes speech through the media speaker path; after reinstall, the user confirmed the received note was audible on the Pixel.
+- Pixel → Samsung reconnect: a message sent while Samsung was unavailable showed `Saved locally; no peers connected`. After Samsung rejoined Nearby, its Room database contained the exact `OFFLINE_QUEUE_TEST_20261101_4` payload. Sync now excludes transient presence broadcasts and splits replies below the 64 KB frame limit.
+- Fixed a foreground retry gap observed on Samsung: Nearby can reject background-only location access when an Activity is behind the notification shade. Resuming the app now retries the foreground mesh service when permissions are granted.
+- New dark shield/mesh logo and launcher/notification marks installed on both phones. Final debug APK SHA-256: `673A0D534C60D155380C7084860DBAB54530AC73867E49970508F0008BD91C5D`. `:protocol:test :app:assembleDebug :app:lintDebug` passed with 28 protocol tests, 0 failures.
+- These results prove these two devices and tested paths. Multi-hop radio delivery, sustained background operation, large-queue recovery, release signing, and independent security review remain open.
+
+---
+
 ## Delivery and recovery pass — 2026-11-01
 
 - Protocol loopback test: three nodes relayed TEXT, SOS, and VOICE in order; the destination received the original voice bytes. This tests protocol routing, not Android Nearby radio or audio decoding.

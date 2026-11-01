@@ -11,7 +11,7 @@ import kotlinx.coroutines.runBlocking
 class RoomSyncStore(private val messageDao: MessageDao) : SyncStore {
     
     override fun getLocalDigest(): List<String> = runBlocking {
-        messageDao.getAllMsgIds()
+        messageDao.getSyncMsgIds()
     }
 
     override fun getMessages(msgIds: List<String>): List<MessageEnvelope> = runBlocking {

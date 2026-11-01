@@ -1,6 +1,17 @@
 ---
 # AlertMesh Production Readiness
 
+## Physical Nearby and audio verification — 2026-11-01
+
+- Tested on Samsung SM-M307F (Android 11/API 30) and Pixel 8a (API 37). Both connected over Nearby and showed one live peer. Samsung text and SOS reached Pixel; the incoming SOS report displayed the chosen `TRAPPED` condition.
+- A Samsung voice note reached Pixel. The first playback was silent/distorted. Fixed AMR-NB decoding to feed 20 ms frames separately and use the media speaker path; the user confirmed audible playback after reinstall.
+- Live reconnect test: Pixel saved `OFFLINE_QUEUE_TEST_20261101_4` while Samsung was unavailable and displayed an honest no-peer warning. After Samsung rejoined, the exact message appeared in its Room database. Recovery now filters transient presence messages, batches responses under the 64 KB frame limit, and retries Nearby when the Activity resumes with permissions.
+- Replaced the app mark with the selected dark shield/mesh design across the in-app mark, launcher icon, monochrome icon, and notification icon.
+- Final debug APK: `.artifacts/AlertMesh-2026-11-01-nearby-verified-debug.apk`, SHA-256 `673A0D534C60D155380C7084860DBAB54530AC73867E49970508F0008BD91C5D`. `:protocol:test :app:assembleDebug :app:lintDebug` passed, 28 tests and 0 failures.
+- **Readiness:** the tested two-phone paths work. This is still a debug test build. Multi-hop radio, long-duration/background resilience, large-queue recovery, release signing, and independent security review need evidence before production deployment.
+
+---
+
 ## Delivery and recovery verification — 2026-11-01
 
 - SOS and voice submissions now persist in Room, so they can be offered during digest sync after a connection. Newly synced signed messages reach the app's incoming SOS/voice observers; unknown or forged origins are rejected in the Android configuration. A 64 KB send limit prevents silently transmitting frames that receivers would drop.

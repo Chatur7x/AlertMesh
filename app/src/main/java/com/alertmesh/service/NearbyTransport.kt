@@ -16,6 +16,7 @@ import com.google.android.gms.nearby.connection.Payload
 import com.google.android.gms.nearby.connection.PayloadCallback
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate
 import com.google.android.gms.nearby.connection.Strategy
+import com.google.android.gms.tasks.Tasks
 import com.alertmesh.protocol.crypto.CryptoProvider
 import com.alertmesh.protocol.transport.Transport
 import com.alertmesh.protocol.transport.TransportFrame
@@ -24,13 +25,16 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 class NearbyTransport(private val context: Context, private val cryptoProvider: CryptoProvider) : Transport {
     private val TAG = "AlertMesh-Nearby"
     private val connectionsClient: ConnectionsClient = Nearby.getConnectionsClient(context)
     private val SERVICE_ID = "com.alertmesh.mesh"
     private val strategy = Strategy.P2P_CLUSTER
-    private val connectedEndpoints = mutableSetOf<String>()
+    private val connectedEndpoints = ConcurrentHashMap.newKeySet<String>()
     
     private val _incomingFrames = MutableSharedFlow<TransportFrame>(extraBufferCapacity = 64)
     private val _discoveredPeers = MutableStateFlow<Set<String>>(emptySet())
@@ -41,7 +45,7 @@ class NearbyTransport(private val context: Context, private val cryptoProvider: 
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
             payload.asBytes()?.let { bytes ->
                 val frame = TransportFrame(endpointId, bytes)
-                _incomingFrames.tryEmit(frame)
+                if (!_incomingFrames.tryEmit(frame)) Log.w(TAG, "Incoming frame buffer full")
             }
         }
         override fun onPayloadTransferUpdate(endpointId: String, update: PayloadTransferUpdate) {}
@@ -72,6 +76,8 @@ class NearbyTransport(private val context: Context, private val cryptoProvider: 
 
     private val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
+            // One deterministic initiator prevents simultaneous connection requests.
+            if (localPeerId >= info.endpointName) return
             if (connectedEndpoints.contains(endpointId)) {
                 Log.d(TAG, "Already connected to $endpointId, skipping duplicate request")
                 return
@@ -88,14 +94,17 @@ class NearbyTransport(private val context: Context, private val cryptoProvider: 
 
     override suspend fun start() {
         val advertisingOptions = AdvertisingOptions.Builder().setStrategy(strategy).build()
-        connectionsClient.startAdvertising(localPeerId, SERVICE_ID, connectionLifecycleCallback, advertisingOptions)
-            .addOnSuccessListener { Log.d(TAG, "Advertising started successfully as $localPeerId") }
-            .addOnFailureListener { e -> Log.e(TAG, "Start advertising failed", e) }
-
         val discoveryOptions = DiscoveryOptions.Builder().setStrategy(strategy).build()
-        connectionsClient.startDiscovery(SERVICE_ID, endpointDiscoveryCallback, discoveryOptions)
-            .addOnSuccessListener { Log.d(TAG, "Discovery started successfully") }
-            .addOnFailureListener { e -> Log.e(TAG, "Start discovery failed", e) }
+        withContext(Dispatchers.IO) {
+            Tasks.await(connectionsClient.startAdvertising(localPeerId, SERVICE_ID, connectionLifecycleCallback, advertisingOptions))
+            try {
+                Tasks.await(connectionsClient.startDiscovery(SERVICE_ID, endpointDiscoveryCallback, discoveryOptions))
+            } catch (e: Exception) {
+                connectionsClient.stopAdvertising()
+                throw e
+            }
+        }
+        Log.d(TAG, "Advertising and discovery started as $localPeerId")
     }
 
     override suspend fun stop() {
@@ -109,7 +118,7 @@ class NearbyTransport(private val context: Context, private val cryptoProvider: 
 
     override suspend fun send(targetPeerId: String, data: ByteArray) {
         val payload = Payload.fromBytes(data)
-        connectionsClient.sendPayload(targetPeerId, payload)
+        withContext(Dispatchers.IO) { Tasks.await(connectionsClient.sendPayload(targetPeerId, payload)) }
     }
 
     override fun incomingFrames(): Flow<TransportFrame> = _incomingFrames.asSharedFlow()
