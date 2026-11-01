@@ -32,10 +32,10 @@ class SocketTransport(
 
     @Serializable
     private data class SocketMessage(
-        val type: String,
-        val fromPeerId: String = "",
-        val toPeerId: String = "",
-        val dataBase64: String = "",
+        val type: String = "",
+        val from: String = "",
+        val to: String = "",
+        val data: String = "",
         val peers: List<String> = emptyList()
     )
 
@@ -48,7 +48,7 @@ class SocketTransport(
             inStream = DataInputStream(socket!!.getInputStream())
             
             // Send register message
-            val registerMsg = SocketMessage(type = "REGISTER", fromPeerId = localPeerId)
+            val registerMsg = SocketMessage(type = "REGISTER", from = localPeerId)
             sendMessage(registerMsg)
 
             readJob = launch {
@@ -77,8 +77,8 @@ class SocketTransport(
                     
                     when (msg.type) {
                         "FRAME" -> {
-                            val data = Base64.getDecoder().decode(msg.dataBase64)
-                            frames.emit(TransportFrame(msg.fromPeerId, data))
+                            val data = Base64.getDecoder().decode(msg.data)
+                            frames.emit(TransportFrame(msg.from, data))
                         }
                         "PEER_LIST" -> {
                             peers.value = msg.peers.toSet()
@@ -105,9 +105,9 @@ class SocketTransport(
         withContext(Dispatchers.IO) {
             val msg = SocketMessage(
                 type = "FRAME",
-                fromPeerId = localPeerId,
-                toPeerId = targetPeerId,
-                dataBase64 = Base64.getEncoder().encodeToString(data)
+                from = localPeerId,
+                to = targetPeerId,
+                data = Base64.getEncoder().encodeToString(data)
             )
             sendMessage(msg)
         }

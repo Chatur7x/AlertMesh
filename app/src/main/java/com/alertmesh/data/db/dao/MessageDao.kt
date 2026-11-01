@@ -29,4 +29,7 @@ interface MessageDao {
 
     @Query("DELETE FROM messages WHERE timestamp < :before")
     suspend fun deleteOlderThan(before: Long)
+
+    @Query("UPDATE messages SET status = :status WHERE msgId = :msgId")
+    suspend fun updateMessageStatus(msgId: String, status: String)
 }

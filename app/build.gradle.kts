@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.alertmesh"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.alertmesh"
@@ -16,6 +16,12 @@ android {
         targetSdk = 35
         versionCode = 4
         versionName = "4.0.0"
+    }
+
+    buildTypes {
+        getByName("debug") {
+            applicationIdSuffix = ".devtest"
+        }
     }
 
     buildFeatures {
@@ -45,6 +51,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.activity:activity-compose")
+    implementation("androidx.fragment:fragment:1.6.2")
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")

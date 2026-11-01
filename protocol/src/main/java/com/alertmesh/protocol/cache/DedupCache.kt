@@ -1,24 +1,31 @@
 package com.alertmesh.protocol.cache
 
-class DedupCache(capacity: Int = 5000) {
-    private val map = object : java.util.LinkedHashMap<String, Boolean>(capacity, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Boolean>?): Boolean {
+class DedupCache(capacity: Int = 5000, private val ttlMs: Long = 300_000) { // 5 min TTL
+    private val entries = object : java.util.LinkedHashMap<String, Long>(capacity, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>?): Boolean {
             return size > capacity
         }
     }
 
     @Synchronized
     fun isDuplicate(msgId: String): Boolean {
-        return if (map.containsKey(msgId)) {
+        evict()
+        return if (entries.containsKey(msgId)) {
             true
         } else {
-            map[msgId] = true
+            entries[msgId] = System.currentTimeMillis()
             false
         }
     }
 
     @Synchronized
     fun add(msgId: String) {
-        map[msgId] = true
+        evict()
+        entries[msgId] = System.currentTimeMillis()
+    }
+
+    private fun evict() {
+        val cutoff = System.currentTimeMillis() - ttlMs
+        entries.entries.removeIf { it.value < cutoff }
     }
 }

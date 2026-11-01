@@ -72,6 +72,10 @@ class NearbyTransport(private val context: Context, private val cryptoProvider: 
 
     private val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
+            if (connectedEndpoints.contains(endpointId)) {
+                Log.d(TAG, "Already connected to $endpointId, skipping duplicate request")
+                return
+            }
             Log.d(TAG, "Discovered endpoint: $endpointId (${info.endpointName})")
             connectionsClient.requestConnection(localPeerId, endpointId, connectionLifecycleCallback)
                 .addOnSuccessListener { Log.d(TAG, "Requested connection to $endpointId") }

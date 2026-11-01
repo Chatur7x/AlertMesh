@@ -6,7 +6,8 @@ import java.security.MessageDigest
 @Serializable
 data class NodeIdentity(
     val deviceId: String,
-    val publicKey: ByteArray,
+    val publicKey: ByteArray,        // Ed25519 signing key
+    val hybridPublicKey: ByteArray,  // ECIE encryption key
     val fingerprint: String
 ) {
     override fun equals(other: Any?): Boolean {
@@ -14,6 +15,7 @@ data class NodeIdentity(
         if (other !is NodeIdentity) return false
         if (deviceId != other.deviceId) return false
         if (!publicKey.contentEquals(other.publicKey)) return false
+        if (!hybridPublicKey.contentEquals(other.hybridPublicKey)) return false
         if (fingerprint != other.fingerprint) return false
         return true
     }
@@ -21,6 +23,7 @@ data class NodeIdentity(
     override fun hashCode(): Int {
         var result = deviceId.hashCode()
         result = 31 * result + publicKey.contentHashCode()
+        result = 31 * result + hybridPublicKey.contentHashCode()
         result = 31 * result + fingerprint.hashCode()
         return result
     }

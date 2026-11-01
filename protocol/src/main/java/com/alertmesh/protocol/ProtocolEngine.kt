@@ -8,6 +8,7 @@ import com.alertmesh.protocol.model.MessageType
 import com.alertmesh.protocol.model.SosPayload
 import com.alertmesh.protocol.model.PresencePayload
 import com.alertmesh.protocol.routing.RateLimiter
+import java.nio.charset.Charset
 import com.alertmesh.protocol.routing.SuppressionTracker
 import com.alertmesh.protocol.sync.DigestSync
 import com.alertmesh.protocol.transport.Transport
@@ -36,14 +37,17 @@ class ProtocolEngine(
     private val engineScope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 ) {
     private val knownPublicKeys = ConcurrentHashMap<String, ByteArray>()
+    private val knownHybridKeys = ConcurrentHashMap<String, ByteArray>()
     private var counter: Long = 0
     private var job: Job? = null
     private var peers = emptySet<String>()
     private var presenceJob: Job? = null
     private var presenceProvider: (() -> PresencePayload)? = null
     var presenceIntervalMs: Long = 10_000
+    private val MAX_FRAME_SIZE = 64 * 1024 // 64 KB: reject oversized frames before decoding
 
     fun start() {
+        if (job != null) return
         job = engineScope.launch {
             launch {
                 transport.discoveredPeers().collect { newPeers ->
@@ -77,6 +81,8 @@ class ProtocolEngine(
 
     fun stop() {
         job?.cancel()
+        job = null
+        peers = emptySet()
         stopPresenceBroadcast()
     }
 
@@ -102,6 +108,8 @@ class ProtocolEngine(
 
     private suspend fun processIncoming(senderPeerId: String, data: ByteArray) {
         try {
+            if (data.size > MAX_FRAME_SIZE) return // Reject oversized frames
+
             val envelope = ProtoBuf.decodeFromByteArray(MessageEnvelope.serializer(), data)
             
             if (dedupCache.isDuplicate(envelope.msgId)) return
@@ -131,22 +139,41 @@ class ProtocolEngine(
             // Store discovered key
             knownPublicKeys[envelope.origin] = originPubKey
 
+            // Store hybrid encryption key from PRESENCE
+            if (envelope.type == MessageType.PRESENCE) {
+                try {
+                    val presence = ProtoBuf.decodeFromByteArray(PresencePayload.serializer(), envelope.payload)
+                    if (presence.hybridPublicKey.isNotEmpty()) {
+                        knownHybridKeys[envelope.origin] = presence.hybridPublicKey
+                    }
+                } catch (_: Exception) {}
+            }
+
             // Record
             replayGuard.record(envelope.origin, envelope.counter)
             suppressionTracker.recordRebroadcast(envelope.msgId, senderPeerId)
-            
+
+            // Try decryption after signature verification (cheap checks first).
+            // Not encrypted for us -> catch block keeps payload as-is.
+            val finalPayload = try {
+                cryptoProvider.decryptFromSender(envelope.payload, originPubKey)
+            } catch (_: Exception) {
+                envelope.payload
+            }
+            val deliveredEnvelope = envelope.copy(payload = finalPayload)
+
             // Deliver or handle Sync / Presence
             when (envelope.type) {
                 MessageType.PRESENCE -> {
                     try {
-                        val presence = ProtoBuf.decodeFromByteArray(PresencePayload.serializer(), envelope.payload)
+                        val presence = ProtoBuf.decodeFromByteArray(PresencePayload.serializer(), deliveredEnvelope.payload)
                         peerPresenceListener?.invoke(presence, originPubKey)
                     } catch (_: Exception) {}
-                    messageListener(envelope)
+                    messageListener(deliveredEnvelope)
                 }
                 MessageType.SYNC_REQ -> {
                     digestSync?.let { sync ->
-                        val peerDigest = ProtoBuf.decodeFromByteArray(ListSerializer(String.serializer()), envelope.payload)
+                        val peerDigest = ProtoBuf.decodeFromByteArray(ListSerializer(String.serializer()), deliveredEnvelope.payload)
                         val missingMessages = sync.handleSyncReq(peerDigest)
                         val payload = ProtoBuf.encodeToByteArray(ListSerializer(MessageEnvelope.serializer()), missingMessages)
                         sendMessage(MessageType.SYNC_RESP, payload, ttl = 1, targetPeer = senderPeerId)
@@ -154,12 +181,17 @@ class ProtocolEngine(
                 }
                 MessageType.SYNC_RESP -> {
                     digestSync?.let { sync ->
-                        val messages = ProtoBuf.decodeFromByteArray(ListSerializer(MessageEnvelope.serializer()), envelope.payload)
-                        sync.handleSyncResp(messages)
+                        val messages = ProtoBuf.decodeFromByteArray(ListSerializer(MessageEnvelope.serializer()), deliveredEnvelope.payload)
+                        sync.handleSyncResp(messages).forEach(messageListener)
                     }
                 }
+                MessageType.ACK -> {
+                    // ACK received — payload holds the original message's msgId.
+                    // Pass through to the app layer so it can update delivery status.
+                    messageListener(deliveredEnvelope)
+                }
                 else -> {
-                    messageListener(envelope)
+                    messageListener(deliveredEnvelope)
                 }
             }
 
@@ -183,8 +215,20 @@ class ProtocolEngine(
         knownPublicKeys[deviceId] = publicKey
     }
 
-    suspend fun sendMessage(type: MessageType, payload: ByteArray, channel: Int = 0, ttl: Int = 8, targetPeer: String? = null) {
+    fun knownPublicKey(deviceId: String): ByteArray? =
+        if (deviceId == cryptoProvider.getDeviceId()) cryptoProvider.getPublicKey() else knownPublicKeys[deviceId]
+
+    fun registerHybridKey(deviceId: String, hybridPublicKey: ByteArray) {
+        knownHybridKeys[deviceId] = hybridPublicKey
+    }
+
+    suspend fun sendMessage(type: MessageType, payload: ByteArray, channel: Int = 0, ttl: Int = 8, targetPeer: String? = null): MessageEnvelope {
         val msgCounter = ++counter
+        val finalPayload = if (targetPeer != null && type == MessageType.TEXT) {
+            val recipientKey = knownHybridKeys[targetPeer]
+                ?: throw IllegalStateException("Recipient encryption key unavailable: $targetPeer")
+            cryptoProvider.encryptForRecipient(payload, recipientKey)
+        } else payload
         val unsigned = MessageEnvelope(
             msgId = MessageEnvelope.newId(),
             origin = cryptoProvider.getDeviceId(),
@@ -192,16 +236,17 @@ class ProtocolEngine(
             type = type,
             channel = channel,
             ttl = ttl,
-            payload = payload,
+            payload = finalPayload,
             signature = ByteArray(0)
         )
         val signature = cryptoProvider.sign(unsigned.signable())
         val signed = unsigned.copy(signature = signature)
         
+        val encoded = ProtoBuf.encodeToByteArray(MessageEnvelope.serializer(), signed)
+        require(encoded.size <= MAX_FRAME_SIZE) { "Message exceeds 64 KB mesh frame limit" }
+
         dedupCache.add(signed.msgId)
         replayGuard.record(signed.origin, signed.counter)
-        
-        val encoded = ProtoBuf.encodeToByteArray(MessageEnvelope.serializer(), signed)
         
         if (targetPeer != null) {
             transport.send(targetPeer, encoded)
@@ -210,6 +255,8 @@ class ProtocolEngine(
                 transport.send(target, encoded)
             }
         }
+        
+        return signed
     }
 
     suspend fun sendSos(sosPayload: SosPayload) {
@@ -219,5 +266,14 @@ class ProtocolEngine(
 
     suspend fun sendVoiceMessage(audioData: ByteArray, channel: Int = 1) {
         sendMessage(MessageType.VOICE, audioData, channel = channel)
+    }
+
+    /**
+     * Send an acknowledgment for a delivered message. The payload carries the
+     * original message's msgId so the sender can mark it as acknowledged.
+     */
+    suspend fun sendAck(originalMsgId: String, targetPeer: String) {
+        val payload = originalMsgId.toByteArray(Charset.defaultCharset())
+        sendMessage(MessageType.ACK, payload, ttl = 1, targetPeer = targetPeer)
     }
 }

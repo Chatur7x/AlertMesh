@@ -9,9 +9,10 @@ interface CryptoProvider {
     fun encryptAead(plaintext: ByteArray, associatedData: ByteArray): ByteArray
     fun decryptAead(ciphertext: ByteArray, associatedData: ByteArray): ByteArray
     fun getPublicKey(): ByteArray
+    fun getHybridPublicKey(): ByteArray
     fun getFingerprint(): String
     fun getDeviceId(): String
     fun deriveSessionKey(peerPublicKey: ByteArray): ByteArray
     fun encryptForRecipient(plaintext: ByteArray, recipientPublicKey: ByteArray): ByteArray
-    fun decryptFromSender(ciphertext: ByteArray): ByteArray
+    fun decryptFromSender(ciphertext: ByteArray, senderPublicKey: ByteArray): ByteArray
 }

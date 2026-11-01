@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
@@ -26,27 +27,34 @@ class MeshAudioManager {
     private val bufferSizeOut = AudioTrack.getMinBufferSize(sampleRate, channelConfigOut, audioFormat)
 
     private var audioRecord: AudioRecord? = null
-    private var isRecording = false
+    @Volatile private var isRecording = false
+    private var recordingJob: Job? = null
     private val recordingScope = CoroutineScope(Dispatchers.IO)
     private val outputStream = ByteArrayOutputStream()
 
     @SuppressLint("MissingPermission")
-    fun startRecording() {
-        if (isRecording) return
-        isRecording = true
+    fun startRecording(): Boolean {
+        if (isRecording) return true
+        if (bufferSizeIn <= 0) return false
         outputStream.reset()
 
-        audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
-            sampleRate,
-            channelConfigIn,
-            audioFormat,
-            bufferSizeIn
-        )
+        val recorder = try {
+            AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfigIn, audioFormat, bufferSizeIn)
+        } catch (_: Exception) { return false }
+        if (recorder.state != AudioRecord.STATE_INITIALIZED) {
+            recorder.release()
+            return false
+        }
+        try {
+            recorder.startRecording()
+        } catch (_: Exception) {
+            recorder.release()
+            return false
+        }
+        audioRecord = recorder
+        isRecording = true
 
-        audioRecord?.startRecording()
-
-        recordingScope.launch {
+        recordingJob = recordingScope.launch {
             val codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AMR_NB)
             val format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AMR_NB, sampleRate, 1).apply {
                 setInteger(MediaFormat.KEY_BIT_RATE, 12200)
@@ -82,11 +90,13 @@ class MeshAudioManager {
             codec.stop()
             codec.release()
         }
+        return true
     }
 
-    fun stopRecording(): ByteArray {
+    suspend fun stopRecording(): ByteArray {
         isRecording = false
-        audioRecord?.stop()
+        try { audioRecord?.stop() } catch (_: IllegalStateException) {}
+        recordingJob?.join()
         audioRecord?.release()
         audioRecord = null
         return outputStream.toByteArray()

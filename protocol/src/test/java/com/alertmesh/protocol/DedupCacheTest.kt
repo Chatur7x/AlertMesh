@@ -30,4 +30,13 @@ class DedupCacheTest {
         assertFalse("msg-1 should be evicted", cache.isDuplicate("msg-1"))
         assertTrue("msg-3 should still be in cache", cache.isDuplicate("msg-3"))
     }
+
+    @Test
+    fun testTimeBasedExpiration() {
+        val cache = DedupCache(capacity = 1000, ttlMs = 50)
+        assertFalse(cache.isDuplicate("msg-1")) // registers msg-1
+        assertTrue(cache.isDuplicate("msg-1")) // immediately after -> duplicate
+        Thread.sleep(100) // let TTL elapse
+        assertFalse("msg-1 should expire after TTL", cache.isDuplicate("msg-1"))
+    }
 }

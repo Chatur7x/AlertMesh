@@ -70,7 +70,7 @@ class RendezvousServer(
                 
                 when (type) {
                     "REGISTER" -> {
-                        val id = json["peerId"]?.jsonPrimitive?.content
+                        val id = json["from"]?.jsonPrimitive?.content
                         if (id != null) {
                             peerId = id
                             clients[id] = socket

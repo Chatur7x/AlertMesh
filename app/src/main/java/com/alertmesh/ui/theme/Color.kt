@@ -6,32 +6,32 @@ import androidx.compose.ui.graphics.Color
 // Inspired by Vercel / Linear / Raycast
 
 // Background Layers (near-black with subtle blue undertone)
-val BgPrimary   = Color(0xFF09090B)   // Main background — near pure black
-val BgElevated  = Color(0xFF111113)   // Cards & elevated surfaces
-val BgSurface   = Color(0xFF18181B)   // Input fields, secondary surfaces
-val BgHover     = Color(0xFF1F1F23)   // Hover/pressed states
+val BgPrimary   = Color(0xFFF4F6F5)
+val BgElevated  = Color(0xFFFFFFFF)
+val BgSurface   = Color(0xFFE9EEEC)
+val BgHover     = Color(0xFFDDE5E1)
 
 // Borders (extremely subtle)
-val BorderDefault = Color(0xFF27272A)  // Default border
-val BorderSubtle  = Color(0xFF1E1E21)  // Subtle dividers
+val BorderDefault = Color(0xFFD6E0DA)
+val BorderSubtle  = Color(0xFFE4EAE6)
 
 // Text
-val TextPrimary   = Color(0xFFFAFAFA)  // Primary text — crisp white
-val TextSecondary = Color(0xFFA1A1AA)  // Secondary/muted text
-val TextDim       = Color(0xFF52525B)  // Timestamps, metadata
+val TextPrimary   = Color(0xFF192720)
+val TextSecondary = Color(0xFF52625A)
+val TextDim       = Color(0xFF586B60)
 
 // Accent Colors (muted, sophisticated)
-val AccentGreen  = Color(0xFF22C55E)   // Success / online / OK
-val AccentCyan   = Color(0xFF06B6D4)   // Info / peer IDs / crypto
-val AccentAmber  = Color(0xFFF59E0B)   // Warning
-val AccentRed    = Color(0xFFEF4444)   // Error / SOS / emergency
+val AccentGreen  = Color(0xFF087C58)
+val AccentCyan   = Color(0xFF126D76)
+val AccentAmber  = Color(0xFF9A620D)
+val AccentRed    = Color(0xFFCF414A)
 val AccentViolet = Color(0xFF8B5CF6)   // Crypto / security badges
 
 // Glow variants (very subtle, for backgrounds only)
-val GlowGreen  = Color(0x1A22C55E)
-val GlowCyan   = Color(0x1A06B6D4)
-val GlowAmber  = Color(0x1AF59E0B)
-val GlowRed    = Color(0x2AEF4444)
+val GlowGreen  = Color(0x1A087C58)
+val GlowCyan   = Color(0x1A126D76)
+val GlowAmber  = Color(0x1A9A620D)
+val GlowRed    = Color(0x1ACF414A)
 val GlowViolet = Color(0x1A8B5CF6)
 
 // ─── Legacy Aliases (backward compat) ───────────────────────

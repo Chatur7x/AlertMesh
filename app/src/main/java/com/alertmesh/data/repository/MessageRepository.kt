@@ -11,7 +11,7 @@ class MessageRepository(private val messageDao: MessageDao) {
         return messageDao.getAllMessages()
     }
 
-    suspend fun saveMessage(envelope: MessageEnvelope, hopCount: Int) {
+    suspend fun saveMessage(envelope: MessageEnvelope, hopCount: Int, status: String = "queued") {
         val entity = MessageEntity(
             msgId = envelope.msgId,
             origin = envelope.origin,
@@ -22,9 +22,13 @@ class MessageRepository(private val messageDao: MessageDao) {
             signature = Base64.encodeToString(envelope.signature, Base64.NO_WRAP),
             timestamp = System.currentTimeMillis(),
             hopCount = hopCount,
-            delivered = true
+            status = status
         )
         messageDao.insert(entity)
+    }
+
+    suspend fun updateMessageStatus(msgId: String, status: String) {
+        messageDao.updateMessageStatus(msgId, status)
     }
 
     suspend fun getAllMsgIds(): List<String> {

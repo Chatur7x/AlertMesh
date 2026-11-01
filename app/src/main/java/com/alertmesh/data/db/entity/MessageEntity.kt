@@ -15,5 +15,5 @@ data class MessageEntity(
     val signature: String, // Base64 encoded
     val timestamp: Long,
     val hopCount: Int,
-    val delivered: Boolean
+    val status: String = "queued"  // queued, sent, delivered, failed, acked
 )

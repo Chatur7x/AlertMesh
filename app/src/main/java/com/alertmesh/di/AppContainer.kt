@@ -18,6 +18,9 @@ import com.alertmesh.protocol.transport.Transport
 import com.alertmesh.service.MeshAudioManager
 import com.alertmesh.service.MeshLocationManager
 import com.alertmesh.service.NearbyTransport
+import com.google.crypto.tink.hybrid.HybridKeyTemplates
+import com.google.crypto.tink.integration.android.AndroidKeysetManager
+import com.google.crypto.tink.signature.SignatureKeyTemplates
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,11 +30,24 @@ class AppContainer(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     val database: MeshDatabase by lazy {
-        Room.databaseBuilder(context, MeshDatabase::class.java, "alertmesh-db").build()
+        Room.databaseBuilder(context, MeshDatabase::class.java, "alertmesh-db")
+            .addMigrations(MeshDatabase.MIGRATION_1_2)
+            .build()
     }
 
     val cryptoProvider: TinkCryptoProvider by lazy {
-        TinkCryptoProvider()
+        val masterKey = "android-keystore://alertmesh_master_key"
+        val signKey = AndroidKeysetManager.Builder()
+            .withSharedPref(context, "signing_keyset", "alertmesh_keys")
+            .withMasterKeyUri(masterKey)
+            .withKeyTemplate(SignatureKeyTemplates.ED25519)
+            .build().keysetHandle
+        val hybridKey = AndroidKeysetManager.Builder()
+            .withSharedPref(context, "hybrid_keyset", "alertmesh_keys")
+            .withMasterKeyUri(masterKey)
+            .withKeyTemplate(HybridKeyTemplates.ECIES_P256_HKDF_HMAC_SHA256_AES128_GCM)
+            .build().keysetHandle
+        TinkCryptoProvider(signKey, hybridKey)
     }
 
     val dedupCache: DedupCache by lazy {
@@ -73,7 +89,9 @@ class AppContainer(private val context: Context) {
     }
 
     val digestSync: DigestSync by lazy {
-        DigestSync(RoomSyncStore(database.messageDao()))
+        DigestSync(RoomSyncStore(database.messageDao()), cryptoProvider) { origin ->
+            protocolEngine.knownPublicKey(origin)
+        }
     }
 
     val protocolEngine: ProtocolEngine by lazy {

@@ -1,6 +1,7 @@
 package com.alertmesh
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -10,10 +11,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.alertmesh.service.MeshService
@@ -52,16 +61,43 @@ class MainActivity : ComponentActivity() {
         
         val app = application as AlertMeshApp
         val container = app.container
+        val motionEnabled = Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()
 
         requestPermissions()
-        startMeshService()
 
         setContent {
             AlertMeshTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val navController = rememberNavController()
 
-                    NavHost(navController = navController, startDestination = "terminal") {
+                    NavHost(
+                        navController = navController,
+                        startDestination = "terminal",
+                        enterTransition = {
+                            if (motionEnabled) slideIntoContainer(
+                                AnimatedContentTransitionScope.SlideDirection.Left,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+                            ) + fadeIn(tween(180)) else EnterTransition.None
+                        },
+                        exitTransition = {
+                            if (motionEnabled) slideOutOfContainer(
+                                AnimatedContentTransitionScope.SlideDirection.Left,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+                            ) + fadeOut(tween(150)) else ExitTransition.None
+                        },
+                        popEnterTransition = {
+                            if (motionEnabled) slideIntoContainer(
+                                AnimatedContentTransitionScope.SlideDirection.Right,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+                            ) + fadeIn(tween(180)) else EnterTransition.None
+                        },
+                        popExitTransition = {
+                            if (motionEnabled) slideOutOfContainer(
+                                AnimatedContentTransitionScope.SlideDirection.Right,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+                            ) + fadeOut(tween(150)) else ExitTransition.None
+                        }
+                    ) {
                         composable("terminal") {
                             val viewModel: TerminalViewModel = viewModel(
                                 factory = TerminalViewModelFactory(container)

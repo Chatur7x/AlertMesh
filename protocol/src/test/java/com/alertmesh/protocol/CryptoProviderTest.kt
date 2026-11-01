@@ -57,8 +57,35 @@ class CryptoProviderTest {
         val provider = TinkCryptoProvider()
         val identity = provider.generateIdentity()
         val plaintext = "Hello ECIES".toByteArray()
-        val ciphertext = provider.encryptForRecipient(plaintext, identity.publicKey)
-        val decrypted = provider.decryptFromSender(ciphertext)
+        val ciphertext = provider.encryptForRecipient(plaintext, identity.hybridPublicKey)
+        val decrypted = provider.decryptFromSender(ciphertext, identity.hybridPublicKey)
         assertArrayEquals(plaintext, decrypted)
+    }
+
+    @Test
+    fun testCrossDeviceEciesRelayCannotDecrypt() {
+        val alice = TinkCryptoProvider()
+        val bob = TinkCryptoProvider()
+        val mallory = TinkCryptoProvider()
+
+        val bobIdentity = bob.generateIdentity()
+
+        val plaintext = "Secret for Bob".toByteArray()
+
+        // Alice encrypts for Bob using Bob's hybrid public key
+        val ciphertext = alice.encryptForRecipient(plaintext, bobIdentity.hybridPublicKey)
+
+        // Bob decrypts with his own private key
+        val decryptedByBob = bob.decryptFromSender(ciphertext, bobIdentity.hybridPublicKey)
+        assertArrayEquals(plaintext, decryptedByBob)
+
+        // Mallory (relay) knows both public keys but only has Mallory's private key — cannot decrypt
+        var decryptedByMallory: ByteArray? = null
+        try {
+            decryptedByMallory = mallory.decryptFromSender(ciphertext, mallory.generateIdentity().hybridPublicKey)
+        } catch (_: Exception) {
+            // expected
+        }
+        assertTrue(decryptedByMallory == null || !decryptedByMallory.contentEquals(plaintext))
     }
 }

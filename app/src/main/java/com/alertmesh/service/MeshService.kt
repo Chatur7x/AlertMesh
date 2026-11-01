@@ -1,16 +1,20 @@
 package com.alertmesh.service
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.BatteryManager
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.alertmesh.AlertMeshApp
 import com.alertmesh.R
 import com.alertmesh.protocol.model.PresencePayload
@@ -19,10 +23,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class MeshService : Service() {
     private val binder = LocalBinder()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var transportStarted = false
 
     inner class LocalBinder : Binder() {
         fun getService(): MeshService = this@MeshService
@@ -52,6 +58,7 @@ class MeshService : Service() {
             deviceId = app.container.cryptoProvider.getDeviceId(),
             fingerprint = app.container.cryptoProvider.getFingerprint(),
             publicKey = app.container.cryptoProvider.getPublicKey(),
+            hybridPublicKey = app.container.cryptoProvider.getHybridPublicKey(),
             batteryPercent = getBatteryPercent(),
             hopCount = 0,
             neighborCount = 0,
@@ -68,17 +75,31 @@ class MeshService : Service() {
         val notification = NotificationCompat.Builder(this, "mesh_channel")
             .setContentTitle(getString(R.string.notification_title))
             .setContentText(getString(R.string.notification_text))
-            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setSmallIcon(R.drawable.ic_alertmesh_notification)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
         startForeground(1, notification)
+
+        if (!allPermissionsGranted()) {
+            Log.w("MeshService", "Required permissions not granted; starting service without transport")
+            return START_STICKY
+        }
 
         val app = application as AlertMeshApp
         val engine = app.container.protocolEngine
 
         serviceScope.launch {
             engine.start()
+            if (!transportStarted) {
+                transportStarted = true
+                try {
+                    app.container.transport.start()
+                } catch (e: Exception) {
+                    Log.e("MeshService", "Transport start failed", e)
+                    transportStarted = false
+                }
+            }
         }
 
         app.container.locationManager.startLocationUpdates()
@@ -97,11 +118,37 @@ class MeshService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         val app = application as AlertMeshApp
+        runBlocking {
+            try { app.container.transport.stop() } catch (_: Exception) {}
+        }
         app.container.locationManager.stopLocationUpdates()
         app.container.barometerManager.stopListening()
         app.container.protocolEngine.stopPresenceBroadcast()
         app.container.protocolEngine.stop()
         serviceScope.cancel()
+        transportStarted = false
+    }
+
+    private fun allPermissionsGranted(): Boolean {
+        var permissions = mutableListOf<String>(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.RECORD_AUDIO
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissions.addAll(listOf(
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.BLUETOOTH_ADVERTISE
+            ))
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.addAll(listOf(
+                Manifest.permission.POST_NOTIFICATIONS,
+                Manifest.permission.NEARBY_WIFI_DEVICES
+            ))
+        }
+        return permissions.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
     }
 
     private fun createNotificationChannel() {

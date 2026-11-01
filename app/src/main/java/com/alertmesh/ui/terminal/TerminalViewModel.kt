@@ -1,5 +1,6 @@
 package com.alertmesh.ui.terminal
 
+import android.util.Base64
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -26,9 +27,10 @@ data class TerminalLine(val text: AnnotatedString, val timestamp: Long, val line
 data class TerminalUiState(
     val lines: List<TerminalLine> = emptyList(),
     val currentInput: String = "",
-    val isConnected: Boolean = true,
+    val isConnected: Boolean = false,
     val peerCount: Int = 0,
-    val currentChannel: Int = 1
+    val currentChannel: Int = 1,
+    val hasVoiceNote: Boolean = false
 )
 
 class TerminalViewModel(
@@ -40,17 +42,73 @@ class TerminalViewModel(
 
     private val commandHistory = mutableListOf<String>()
     private var historyIndex = -1
+    private val processedAckIds = mutableSetOf<String>()
+    private val displayedMsgIds = mutableSetOf<String>()
+    private var latestVoicePayload: String? = null
 
     init {
         onBoot()
         observePeers()
+        observeMessages()
     }
 
     private fun observePeers() {
         viewModelScope.launch {
             container.peerRepository.getAllPeers().collect { peerList ->
                 val onlineCount = peerList.count { it.isOnline }
-                _uiState.update { it.copy(peerCount = onlineCount) }
+                _uiState.update { it.copy(peerCount = onlineCount, isConnected = onlineCount > 0) }
+            }
+        }
+    }
+
+    /**
+     * Observes stored messages to (a) honor delivery: mark a referenced message as "acked"
+     * when an ACK arrives, and (b) show received messages on the active channel only.
+     */
+    private fun observeMessages() {
+        viewModelScope.launch {
+            val localDeviceId = container.cryptoProvider.getDeviceId()
+            container.messageRepository.getAllMessages().collect { messages ->
+                // ACK received -> mark the referenced sent message as acknowledged.
+                messages.filter { it.type == MessageType.ACK.name }.forEach { ack ->
+                    if (ack.msgId !in processedAckIds) {
+                        processedAckIds.add(ack.msgId)
+                        try {
+                            val originalMsgId = String(
+                                Base64.decode(ack.payload, Base64.NO_WRAP), Charsets.UTF_8
+                            )
+                            container.messageRepository.updateMessageStatus(originalMsgId, "acked")
+                        } catch (_: Exception) {}
+                    }
+                }
+
+                // Display received (non-local, non-ACK) messages on the current channel only.
+                val currentChannel = uiState.value.currentChannel
+                messages.filter {
+                    it.origin != localDeviceId &&
+                        it.type == MessageType.TEXT.name &&
+                        it.channel == currentChannel &&
+                        it.msgId !in displayedMsgIds
+                }.forEach { msg ->
+                    displayedMsgIds.add(msg.msgId)
+                    try {
+                        val text = String(Base64.decode(msg.payload, Base64.NO_WRAP), Charsets.UTF_8)
+                        appendLine(infoLine("[CH ${msg.channel}] ${msg.origin.take(8)}...: $text"), "msg")
+                    } catch (_: Exception) {}
+                }
+                messages.lastOrNull { it.origin != localDeviceId && it.type == MessageType.VOICE.name }?.let { voice ->
+                    if (latestVoicePayload != voice.payload) {
+                        latestVoicePayload = voice.payload
+                        _uiState.update { it.copy(hasVoiceNote = true) }
+                        appendLine(infoLine("Voice note received from ${voice.origin.take(8)}. Tap PLAY VOICE to listen."), "msg")
+                    }
+                }
+                messages.lastOrNull { it.origin != localDeviceId && it.type == MessageType.SOS.name }?.let { sos ->
+                    if (sos.msgId !in displayedMsgIds) {
+                        displayedMsgIds.add(sos.msgId)
+                        appendLine(errLine("Incoming SOS from ${sos.origin.take(8)}. Open SOS for details."), "err")
+                    }
+                }
             }
         }
     }
@@ -73,7 +131,7 @@ class TerminalViewModel(
             )
 
             _uiState.update { state ->
-                state.copy(lines = bootLines.map { TerminalLine(it, System.currentTimeMillis()) })
+                state.copy(lines = bootLines.map { TerminalLine(it, System.currentTimeMillis(), "boot") })
             }
         }
     }
@@ -117,10 +175,11 @@ class TerminalViewModel(
         commandHistory.add(trimmed)
         historyIndex = -1
 
-        appendLine(commandEcho(trimmed), "info")
+        val parsed = CommandParser.parse(trimmed)
+        if (parsed !is CommandParser.Command.Channel) appendLine(commandEcho(trimmed), "info")
         _uiState.update { it.copy(currentInput = "") }
 
-        when (val cmd = CommandParser.parse(trimmed)) {
+        when (val cmd = parsed) {
             is CommandParser.Command.UniversalBroadcast -> {
                 sendBroadcastMessage(cmd.text)
             }
@@ -164,15 +223,7 @@ class TerminalViewModel(
             }
 
             is CommandParser.Command.Ping -> {
-                viewModelScope.launch {
-                    val target = cmd.target
-                    if (target != null) {
-                        appendLine(okLine("Ping request dispatched to peer: $target"), "ok")
-                    } else {
-                        val count = uiState.value.peerCount
-                        appendLine(okLine("Universal Ping broadcast dispatched to $count connected peers"), "ok")
-                    }
-                }
+                appendLine(warnLine("Ping is not implemented yet"), "warn")
             }
 
             is CommandParser.Command.Status -> {
@@ -208,7 +259,6 @@ class TerminalViewModel(
 
             is CommandParser.Command.Channel -> {
                 _uiState.update { it.copy(currentChannel = cmd.num) }
-                appendLine(okLine("Switched to Channel ${cmd.num}"), "ok")
             }
 
             is CommandParser.Command.Sos -> {
@@ -225,8 +275,16 @@ class TerminalViewModel(
                         accuracy = loc?.accuracy,
                         fixAgeSeconds = loc?.let { it.fixAgeMs / 1000 }
                     )
-                    container.protocolEngine.sendSos(sos)
-                    appendLine(errLine("🚨 UNIVERSAL EMERGENCY SOS BROADCAST SENT!"), "err")
+                    try {
+                        val envelope = container.protocolEngine.sendMessage(
+                            MessageType.SOS,
+                            kotlinx.serialization.protobuf.ProtoBuf.encodeToByteArray(SosPayload.serializer(), sos),
+                            channel = 0, ttl = 12
+                        )
+                        val hasPeers = uiState.value.peerCount > 0
+                        container.messageRepository.saveMessage(envelope, 0, if (hasPeers) "sent" else "queued")
+                        appendLine(warnLine(if (hasPeers) "SOS submitted; receipt unconfirmed" else "SOS saved locally; no peers connected"), "warn")
+                    } catch (e: Exception) { appendLine(errLine("SOS failed: ${e.message}"), "err") }
                 }
             }
 
@@ -247,16 +305,38 @@ class TerminalViewModel(
     fun sendBroadcastMessage(text: String) {
         viewModelScope.launch {
             val textBytes = text.toByteArray(Charsets.UTF_8)
-            container.protocolEngine.sendMessage(MessageType.TEXT, textBytes, channel = uiState.value.currentChannel)
-            appendLine(okLine("[BROADCAST : CH ${uiState.value.currentChannel}] $text"), "msg")
+            try {
+                val envelope = container.protocolEngine.sendMessage(
+                    MessageType.TEXT, textBytes,
+                    channel = uiState.value.currentChannel
+                )
+                val hasPeers = uiState.value.peerCount > 0
+                container.messageRepository.saveMessage(envelope, hopCount = 0, status = if (hasPeers) "sent" else "queued")
+                appendLine(
+                    if (hasPeers) okLine("[SUBMITTED : CH ${uiState.value.currentChannel}] $text")
+                    else warnLine("Saved locally; no peers connected. Delivery is not confirmed."),
+                    if (hasPeers) "msg" else "warn"
+                )
+            } catch (e: Exception) {
+                appendLine(errLine("Failed to broadcast: ${e.message}"), "err")
+            }
         }
     }
 
     fun sendTextMessage(target: String, text: String) {
         viewModelScope.launch {
             val textBytes = text.toByteArray(Charsets.UTF_8)
-            container.protocolEngine.sendMessage(MessageType.TEXT, textBytes, channel = uiState.value.currentChannel)
-            appendLine(okLine("[MSG to $target] $text"), "msg")
+            try {
+                val envelope = container.protocolEngine.sendMessage(
+                    MessageType.TEXT, textBytes,
+                    channel = uiState.value.currentChannel,
+                    targetPeer = target
+                )
+                container.messageRepository.saveMessage(envelope, hopCount = 0, status = "sent")
+                appendLine(okLine("[SUBMITTED to $target] $text (delivery unconfirmed)"), "msg")
+            } catch (e: Exception) {
+                appendLine(errLine("Failed to send to $target: ${e.message}"), "err")
+            }
         }
     }
 
@@ -267,15 +347,33 @@ class TerminalViewModel(
     }
 
     fun startVoice() {
-        container.audioManager.startRecording()
+        if (!container.audioManager.startRecording()) {
+            appendLine(errLine("Microphone unavailable; recording did not start"), "err")
+        }
     }
 
     fun stopVoice() {
-        val audioData = container.audioManager.stopRecording()
-        if (audioData.isNotEmpty()) {
-            viewModelScope.launch {
-                container.protocolEngine.sendVoiceMessage(audioData, uiState.value.currentChannel)
-                appendLine(okLine("Voice message sent on Channel ${uiState.value.currentChannel}"), "ok")
+        viewModelScope.launch {
+            val audioData = container.audioManager.stopRecording()
+            if (audioData.isNotEmpty()) {
+                try {
+                val envelope = container.protocolEngine.sendMessage(MessageType.VOICE, audioData, uiState.value.currentChannel)
+                container.messageRepository.saveMessage(envelope, 0, if (uiState.value.peerCount > 0) "sent" else "queued")
+                appendLine(okLine("Voice note submitted on Channel ${uiState.value.currentChannel}; delivery unconfirmed"), "ok")
+                } catch (e: Exception) { appendLine(errLine("Voice note failed: ${e.message}"), "err") }
+            } else {
+                appendLine(warnLine("No voice audio recorded"), "warn")
+            }
+        }
+    }
+
+    fun playLatestVoice() {
+        val encoded = latestVoicePayload ?: return
+        viewModelScope.launch {
+            try {
+                container.audioManager.playAudio(Base64.decode(encoded, Base64.NO_WRAP))
+            } catch (e: Exception) {
+                appendLine(errLine("Voice playback failed: ${e.message}"), "err")
             }
         }
     }

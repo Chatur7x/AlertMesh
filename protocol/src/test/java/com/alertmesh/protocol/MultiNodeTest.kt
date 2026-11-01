@@ -5,6 +5,8 @@ import com.alertmesh.protocol.cache.ReplayGuard
 import com.alertmesh.protocol.crypto.TinkCryptoProvider
 import com.alertmesh.protocol.model.MessageEnvelope
 import com.alertmesh.protocol.model.MessageType
+import com.alertmesh.protocol.model.Condition
+import com.alertmesh.protocol.model.SosPayload
 import com.alertmesh.protocol.routing.RateLimiter
 import com.alertmesh.protocol.routing.SuppressionTracker
 import com.alertmesh.protocol.transport.LoopbackTransport
@@ -12,6 +14,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertArrayEquals
 import org.junit.Test
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -48,8 +51,11 @@ class MultiNodeTest {
                 engineScope = this
             ).apply {
                 registerPublicKey(cryptoA.getDeviceId(), cryptoA.getPublicKey())
+                registerHybridKey(cryptoA.getDeviceId(), cryptoA.getHybridPublicKey())
                 registerPublicKey(cryptoB.getDeviceId(), cryptoB.getPublicKey())
+                registerHybridKey(cryptoB.getDeviceId(), cryptoB.getHybridPublicKey())
                 registerPublicKey(cryptoC.getDeviceId(), cryptoC.getPublicKey())
+                registerHybridKey(cryptoC.getDeviceId(), cryptoC.getHybridPublicKey())
                 start()
             }
 
@@ -72,6 +78,14 @@ class MultiNodeTest {
 
         val msgC = receivedC[0]
         assertEquals(2, msgC.ttl) // Because B decremented it before sending
+
+        val sos = SosPayload(peopleCount = 2, injuredCount = 1, condition = Condition.INJURED, note = "Need help")
+        eA.sendSos(sos)
+        val voice = byteArrayOf(1, 2, 3, 4)
+        eA.sendVoiceMessage(voice)
+        delay(1000)
+        assertEquals(listOf(MessageType.TEXT, MessageType.SOS, MessageType.VOICE), receivedC.map { it.type })
+        assertArrayEquals(voice, receivedC.last().payload)
 
         eA.stop()
         eB.stop()

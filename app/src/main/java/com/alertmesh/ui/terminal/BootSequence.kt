@@ -22,13 +22,13 @@ object BootSequence {
         
         lines.add(buildAnnotatedString {
             withStyle(style = SpanStyle(color = AccentGreen, fontWeight = FontWeight.Bold)) {
-                append("AlertMesh v0.1.0-rc1 . build 2026.07.30")
+                append("AlertMesh terminal")
             }
         })
-        lines.add(okLine("Keystore unlocked"))
+        lines.add(warnLine("Identity keys are not persisted yet"))
         lines.add(okLine("Identity: $fingerprint"))
         lines.add(okLine("Transport: $transport"))
-        lines.add(okLine("Router online ttl=8 dedup=5000 suppress=2"))
+        lines.add(warnLine("Mesh connection status is shown above"))
         lines.add(okLine("Store: $messageCount messages . $peerCount peers known"))
         
         if (!hasBarometer) {
@@ -36,10 +36,10 @@ object BootSequence {
         }
         
         if (!hasLocation) {
-            lines.add(warnLine("Location services OFF - run /fix"))
+            lines.add(warnLine("No current location fix"))
         }
         
-        lines.add(okLine("Listening."))
+        lines.add(warnLine("Waiting for connected peers"))
         lines.add(buildAnnotatedString {
             withStyle(style = SpanStyle(color = AccentGreen)) {
                 append("type /help for commands")

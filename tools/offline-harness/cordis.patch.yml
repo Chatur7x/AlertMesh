@@ -1,0 +1,24 @@
+- id: agent-default-model
+  config:
+    provider: alertmesh-local
+    model: local-code:latest
+- id: llm-pi-ai
+  config:
+    providers:
+      alertmesh-local:
+        api: openai-completions
+        baseURL: http://127.0.0.1:11434/v1
+        apiKeyEnv: ALERTMESH_LOCAL_KEY
+        compat:
+          supportsDeveloperRole: false
+          maxTokensField: max_tokens
+        models:
+          - id: local-code:latest
+            contextWindow: 16384
+            maxTokens: 2048
+- id: llm-deepseek
+  disabled: true
+- id: web-search-deepseek
+  disabled: true
+- id: tool-web
+  disabled: true

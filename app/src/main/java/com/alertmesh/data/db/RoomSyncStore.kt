@@ -42,7 +42,7 @@ class RoomSyncStore(private val messageDao: MessageDao) : SyncStore {
                     signature = Base64.encodeToString(envelope.signature, Base64.NO_WRAP),
                     timestamp = System.currentTimeMillis(),
                     hopCount = 0, // Unknown hop count from sync
-                    delivered = true
+                    status = "sent"
                 )
                 messageDao.insert(entity)
             }

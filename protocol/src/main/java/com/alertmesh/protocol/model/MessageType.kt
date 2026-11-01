@@ -4,5 +4,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class MessageType {
-    TEXT, VOICE, SOS, PRESENCE, SYNC_REQ, SYNC_RESP
+    TEXT, VOICE, SOS, PRESENCE, SYNC_REQ, SYNC_RESP, ACK
 }

@@ -20,6 +20,9 @@
     <application
         android:name=".AlertMeshApp"
         android:label="AlertMesh"
+        android:icon="@drawable/ic_alertmesh_launcher"
+        android:roundIcon="@drawable/ic_alertmesh_launcher"
+        android:allowBackup="false"
         android:theme="@style/Theme.AlertMesh"
         android:supportsRtl="true">
         <activity
