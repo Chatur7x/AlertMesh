@@ -73,7 +73,7 @@ fun TriageForm(
     var note by remember { mutableStateOf("") }
     var selectedCondition by remember { mutableStateOf<Condition?>(null) }
 
-    val conditions = Condition.entries.toTypedArray()
+    val conditions = Condition.entries.filter { it != Condition.UNKNOWN }
     val motionEnabled = Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()
 
     Column(
@@ -101,7 +101,7 @@ fun TriageForm(
                 val isSelected = c == selectedCondition
                 val chipColor = when (c) {
                     Condition.TRAPPED, Condition.INJURED -> AccentRed
-                    Condition.NEED_MEDICAL, Condition.NEED_WATER -> AccentAmber
+                    Condition.NEED_MEDICAL, Condition.NEED_WATER, Condition.UNKNOWN -> AccentAmber
                     Condition.SAFE -> AccentGreen
                 }
                 val rowColor by animateColorAsState(
@@ -231,7 +231,7 @@ fun TriageForm(
                 text = "Send SOS",
                 fontFamily = AppFontFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
+                fontSize = 16.sp,
                 color = BgPrimary
             )
         }

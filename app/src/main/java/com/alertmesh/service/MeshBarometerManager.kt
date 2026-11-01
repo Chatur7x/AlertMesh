@@ -6,6 +6,9 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
+import android.os.SystemClock
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class MeshBarometerManager(context: Context) : SensorEventListener {
     private val TAG = "AlertMesh-Barometer"
@@ -17,6 +20,11 @@ class MeshBarometerManager(context: Context) : SensorEventListener {
 
     var currentPressureHpa: Float? = null
         private set
+    private val _pressureHpa = MutableStateFlow<Float?>(null)
+    val pressureHpa = _pressureHpa.asStateFlow()
+    private val _pressureHistory = MutableStateFlow<List<Float>>(emptyList())
+    val pressureHistory = _pressureHistory.asStateFlow()
+    private var lastPublishedMs = 0L
 
     fun startListening() {
         if (hasBarometer && pressureSensor != null) {
@@ -32,11 +40,22 @@ class MeshBarometerManager(context: Context) : SensorEventListener {
             sensorManager?.unregisterListener(this)
             Log.d(TAG, "Barometer sensor listening stopped")
         }
+        currentPressureHpa = null
+        _pressureHpa.value = null
+        _pressureHistory.value = emptyList()
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event != null && event.sensor.type == Sensor.TYPE_PRESSURE) {
-            currentPressureHpa = event.values[0]
+            val pressure = event.values[0]
+            if (pressure !in 300f..1100f) return
+            currentPressureHpa = pressure
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastPublishedMs >= 1000L) {
+                lastPublishedMs = now
+                _pressureHpa.value = pressure
+                _pressureHistory.value = (_pressureHistory.value + pressure).takeLast(60)
+            }
         }
     }
 

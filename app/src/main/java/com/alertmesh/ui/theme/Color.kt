@@ -2,36 +2,30 @@ package com.alertmesh.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ─── Ultra-Minimal Premium Dark Palette ─────────────────────
-// Inspired by Vercel / Linear / Raycast
+// Palette sampled from the supplied beacon and mesh artwork.
+val BgPrimary   = Color(0xFF07111B)
+val BgElevated  = Color(0xFF101F2C)
+val BgSurface   = Color(0xFF172B3A)
+val BgHover     = Color(0xFF203B4B)
 
-// Background Layers (near-black with subtle blue undertone)
-val BgPrimary   = Color(0xFFF4F6F5)
-val BgElevated  = Color(0xFFFFFFFF)
-val BgSurface   = Color(0xFFE9EEEC)
-val BgHover     = Color(0xFFDDE5E1)
+val BorderDefault = Color(0xFF31505F)
+val BorderSubtle  = Color(0xFF244151)
 
-// Borders (extremely subtle)
-val BorderDefault = Color(0xFFD6E0DA)
-val BorderSubtle  = Color(0xFFE4EAE6)
+val TextPrimary   = Color(0xFFF4FAFB)
+val TextSecondary = Color(0xFFC1D5DC)
+val TextDim       = Color(0xFFA4BDC7)
 
-// Text
-val TextPrimary   = Color(0xFF192720)
-val TextSecondary = Color(0xFF52625A)
-val TextDim       = Color(0xFF586B60)
-
-// Accent Colors (muted, sophisticated)
-val AccentGreen  = Color(0xFF087C58)
-val AccentCyan   = Color(0xFF126D76)
-val AccentAmber  = Color(0xFF9A620D)
-val AccentRed    = Color(0xFFCF414A)
+val AccentGreen  = Color(0xFF62DDB8)
+val AccentCyan   = Color(0xFF69E5EF)
+val AccentAmber  = Color(0xFFFFCE80)
+val AccentRed    = Color(0xFFFF7469)
 val AccentViolet = Color(0xFF8B5CF6)   // Crypto / security badges
 
 // Glow variants (very subtle, for backgrounds only)
-val GlowGreen  = Color(0x1A087C58)
-val GlowCyan   = Color(0x1A126D76)
-val GlowAmber  = Color(0x1A9A620D)
-val GlowRed    = Color(0x1ACF414A)
+val GlowGreen  = Color(0x2662DDB8)
+val GlowCyan   = Color(0x2669E5EF)
+val GlowAmber  = Color(0x26FFCE80)
+val GlowRed    = Color(0x26FF7469)
 val GlowViolet = Color(0x1A8B5CF6)
 
 // ─── Legacy Aliases (backward compat) ───────────────────────

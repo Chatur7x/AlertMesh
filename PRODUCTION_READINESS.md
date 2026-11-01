@@ -1,6 +1,16 @@
 ---
 # AlertMesh Production Readiness
 
+## Concept 4 interface and SOS verification — 2026-11-01
+
+- Used `.artifacts/icons/alertmesh_icon_concept4_master_1024.png` as the exact launcher and in-app mark. Rebuilt the Compose palette around its navy, cyan mesh, and coral beacon; added a timed SOS progress indicator, quick actions, and a bounded live pressure chart.
+- A normal SOS tap opens the report form. A physical 11-second hold on Samsung SM-M307F submitted an automatic SOS with condition `UNKNOWN`, one person, and a fresh location fix. Opening a new report now clears a previously displayed incoming SOS.
+- The Pixel 8a has a barometer; the Samsung SM-M307F reports the sensor as unavailable. The field panel shows pressure only when measured and relative height only when a recent peer pressure exists. This is an indicative sensor comparison, not a calibrated floor or rescue location.
+- `:protocol:test :server:build :app:assembleDebug :app:lintDebug` passed: 30 protocol tests, 0 failures. Debug APK: `.artifacts/AlertMesh-2026-11-01-concept4-debug.apk`, SHA-256 `F44C59584101AEC98412A0C72ABC290DC8D20DADBA20E4F3C8B495C94CFFF124`.
+- **Readiness:** this is a tested debug build, not a certified production release. Release signing, multi-hop radio, sustained background operation, large-queue recovery, and independent security review remain open.
+
+---
+
 ## Physical Nearby and audio verification — 2026-11-01
 
 - Tested on Samsung SM-M307F (Android 11/API 30) and Pixel 8a (API 37). Both connected over Nearby and showed one live peer. Samsung text and SOS reached Pixel; the incoming SOS report displayed the chosen `TRAPPED` condition.

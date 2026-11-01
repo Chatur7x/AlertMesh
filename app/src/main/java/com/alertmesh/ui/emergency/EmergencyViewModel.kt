@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class EmergencyUiState(
+    val isSubmitting: Boolean = false,
     val isAlarmActive: Boolean = false,
     val incomingSos: SosPayload? = null,
     val senderFingerprint: String = "",
@@ -32,6 +33,7 @@ class EmergencyViewModel(
     private val _uiState = MutableStateFlow(EmergencyUiState())
     val uiState: StateFlow<EmergencyUiState> = _uiState.asStateFlow()
     private var lastIncomingId: String? = null
+    private var submissionInFlight = false
 
     init {
         viewModelScope.launch {
@@ -56,16 +58,19 @@ class EmergencyViewModel(
 
     @OptIn(ExperimentalSerializationApi::class)
     fun triggerSos(payload: SosPayload) {
+        if (submissionInFlight) return
+        submissionInFlight = true
+        _uiState.update { it.copy(isSubmitting = true, error = null) }
         viewModelScope.launch {
-            val location = container.locationManager.getCurrentLocation()
-            val newPayload = payload.copy(
-                latitude = location?.latitude ?: payload.latitude,
-                longitude = location?.longitude ?: payload.longitude,
-                accuracy = location?.accuracy ?: payload.accuracy,
-                fixAgeSeconds = location?.let { it.fixAgeMs / 1000 } ?: payload.fixAgeSeconds,
-                pressureHpa = container.barometerManager.currentPressureHpa ?: payload.pressureHpa
-            )
             try {
+                val location = container.locationManager.getCurrentLocation()
+                val newPayload = payload.copy(
+                    latitude = location?.latitude ?: payload.latitude,
+                    longitude = location?.longitude ?: payload.longitude,
+                    accuracy = location?.accuracy ?: payload.accuracy,
+                    fixAgeSeconds = location?.let { it.fixAgeMs / 1000 } ?: payload.fixAgeSeconds,
+                    pressureHpa = container.barometerManager.currentPressureHpa ?: payload.pressureHpa
+                )
                 val envelope = container.protocolEngine.sendMessage(
                     MessageType.SOS,
                     ProtoBuf.encodeToByteArray(SosPayload.serializer(), newPayload),
@@ -82,6 +87,9 @@ class EmergencyViewModel(
                 }
             } catch (_: Exception) {
                 _uiState.update { it.copy(error = "SOS could not be submitted. Check mesh status and retry.") }
+            } finally {
+                submissionInFlight = false
+                _uiState.update { it.copy(isSubmitting = false) }
             }
         }
     }
@@ -91,6 +99,10 @@ class EmergencyViewModel(
             viewModelScope.launch { container.messageRepository.updateMessageStatus(id, "seen") }
         }
         _uiState.update { it.copy(isAlarmActive = false, incomingSos = null, senderFingerprint = "", deliveryMessage = null) }
+    }
+
+    fun prepareNewReport() {
+        _uiState.update { EmergencyUiState() }
     }
 
     fun onSosReceived(payload: SosPayload, senderFingerprint: String) {

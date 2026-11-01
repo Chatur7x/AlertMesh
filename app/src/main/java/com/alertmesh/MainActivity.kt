@@ -28,6 +28,8 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.alertmesh.service.MeshService
+import com.alertmesh.protocol.model.Condition
+import com.alertmesh.protocol.model.SosPayload
 import com.alertmesh.ui.emergency.EmergencyScreen
 import com.alertmesh.ui.emergency.EmergencyViewModel
 import com.alertmesh.ui.emergency.EmergencyViewModelFactory
@@ -71,6 +73,9 @@ class MainActivity : ComponentActivity() {
             AlertMeshTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val navController = rememberNavController()
+                    val emergencyViewModel: EmergencyViewModel = viewModel(
+                        factory = EmergencyViewModelFactory(container)
+                    )
 
                     NavHost(
                         navController = navController,
@@ -106,15 +111,23 @@ class MainActivity : ComponentActivity() {
                             )
                             TerminalScreen(
                                 viewModel = viewModel,
-                                onNavigateToEmergency = { navController.navigate("emergency") }
+                                onNavigateToEmergency = {
+                                    emergencyViewModel.prepareNewReport()
+                                    navController.navigate("emergency")
+                                },
+                                onQuickSos = {
+                                    emergencyViewModel.triggerSos(SosPayload(
+                                        peopleCount = 1, injuredCount = 0,
+                                        condition = Condition.UNKNOWN,
+                                        note = "Automatic SOS; details not provided"
+                                    ))
+                                    navController.navigate("emergency")
+                                }
                             )
                         }
                         composable("emergency") {
-                            val viewModel: EmergencyViewModel = viewModel(
-                                factory = EmergencyViewModelFactory(container)
-                            )
                             EmergencyScreen(
-                                viewModel = viewModel,
+                                viewModel = emergencyViewModel,
                                 onNavigateBack = { navController.popBackStack() }
                             )
                         }

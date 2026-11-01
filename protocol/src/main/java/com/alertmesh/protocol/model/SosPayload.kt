@@ -21,5 +21,5 @@ data class SosPayload(
 
 @Serializable
 enum class Condition {
-    TRAPPED, INJURED, SAFE, NEED_WATER, NEED_MEDICAL
+    TRAPPED, INJURED, SAFE, NEED_WATER, NEED_MEDICAL, UNKNOWN
 }

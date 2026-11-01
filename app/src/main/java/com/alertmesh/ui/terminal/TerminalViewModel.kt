@@ -10,6 +10,7 @@ import com.alertmesh.di.AppContainer
 import com.alertmesh.protocol.model.Condition
 import com.alertmesh.protocol.model.MessageType
 import com.alertmesh.protocol.model.SosPayload
+import com.alertmesh.protocol.routing.DistanceEstimator
 import com.alertmesh.ui.terminal.components.commandEcho
 import com.alertmesh.ui.terminal.components.errLine
 import com.alertmesh.ui.terminal.components.infoLine
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -30,7 +32,11 @@ data class TerminalUiState(
     val isConnected: Boolean = false,
     val peerCount: Int = 0,
     val currentChannel: Int = 1,
-    val hasVoiceNote: Boolean = false
+    val hasVoiceNote: Boolean = false,
+    val barometerAvailable: Boolean = false,
+    val pressureHpa: Float? = null,
+    val pressureHistory: List<Float> = emptyList(),
+    val relativeHeightMeters: Double? = null
 )
 
 class TerminalViewModel(
@@ -49,7 +55,30 @@ class TerminalViewModel(
     init {
         onBoot()
         observePeers()
+        observeFieldMetrics()
         observeMessages()
+    }
+
+    private fun observeFieldMetrics() {
+        viewModelScope.launch {
+            container.barometerManager.pressureHistory.collect { history ->
+                _uiState.update { it.copy(pressureHistory = history) }
+            }
+        }
+        viewModelScope.launch {
+            combine(container.barometerManager.pressureHpa,
+                container.peerRepository.getAllPeers(), container.transport.discoveredPeers()) { pressure, peers, connected ->
+                val peerPressure = if (connected.isEmpty()) null else peers
+                    .filter { System.currentTimeMillis() - it.lastSeen < 30_000 }
+                    .maxByOrNull { it.lastSeen }?.pressureHpa
+                val height = if (pressure != null && peerPressure != null && peerPressure > 0f)
+                    DistanceEstimator.barometricHeight(peerPressure, pressure) else null
+                pressure to height
+            }.collect { (pressure, height) ->
+                _uiState.update { it.copy(barometerAvailable = container.barometerManager.hasBarometer,
+                    pressureHpa = pressure, relativeHeightMeters = height) }
+            }
+        }
     }
 
     private fun observePeers() {

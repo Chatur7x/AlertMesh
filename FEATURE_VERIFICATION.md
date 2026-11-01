@@ -1,5 +1,15 @@
 # AlertMesh — Feature Verification Matrix
 
+## Concept 4 UI and automatic SOS — 2026-11-01
+
+- Exact supplied Concept 4 bitmap is wired to launcher and in-app branding. Navy/cyan/coral screens and animation feedback were built and inspected on the Samsung SM-M307F; its smaller screen prompted shorter sensor labels.
+- Samsung physical input: short SOS tap opened `Request help`; an 11-second hold submitted `UNKNOWN` with one person and a fresh location. The report showed submission to the mesh with receipt unconfirmed. A previously received SOS no longer masks a newly opened form.
+- Barometer: Pixel 8a has a pressure sensor; Samsung does not. UI handles both cases and displays a recent peer height estimate only when both pressure readings exist. The protocol height sign and `UNKNOWN` wire roundtrip have tests.
+- Full gate passed: 30 protocol tests, server build, Android debug assembly, Android lint. APK SHA-256 `F44C59584101AEC98412A0C72ABC290DC8D20DADBA20E4F3C8B495C94CFFF124`.
+- Remaining field evidence: timed hold receiving on a second unlocked phone, calibrated peer height, multi-hop radio, long background run, release signing, and security review. The debug APK is not a production release.
+
+---
+
 ## Two-phone Nearby verification — 2026-11-01
 
 - Devices: Samsung SM-M307F (Android API 30, USB) and Pixel 8a (API 37, wireless ADB), both running `com.alertmesh.devtest`. Each discovered the other over Nearby and showed one live connected peer.

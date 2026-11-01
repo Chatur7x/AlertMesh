@@ -15,6 +15,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,7 +25,8 @@ import com.alertmesh.ui.theme.*
 @Composable
 fun EmergencyScreen(viewModel: EmergencyViewModel, onNavigateBack: () -> Unit) {
     val state by viewModel.uiState.collectAsState()
-    Column(Modifier.fillMaxSize().background(BgPrimary).windowInsetsPadding(WindowInsets.systemBars)) {
+    Column(Modifier.fillMaxSize().background(Brush.verticalGradient(
+        listOf(BgPrimary, Color(0xFF0C2030)))).windowInsetsPadding(WindowInsets.systemBars)) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp)) {
             Text("‹  Back", color = AccentCyan, fontFamily = AppFontFamily, fontSize = 16.sp,
                 modifier = Modifier.clickable(onClick = onNavigateBack).padding(end = 18.dp))
@@ -32,7 +35,13 @@ fun EmergencyScreen(viewModel: EmergencyViewModel, onNavigateBack: () -> Unit) {
         }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 8.dp)) {
-            if (state.isAlarmActive) {
+            if (state.isSubmitting) {
+                Text("Submitting SOS…", color = AccentRed, fontFamily = AppFontFamily,
+                    fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                Spacer(Modifier.height(12.dp))
+                Text("Saving your alert and sending it to connected peers.", color = TextSecondary,
+                    fontFamily = AppFontFamily, fontSize = 15.sp)
+            } else if (state.isAlarmActive) {
                 Text(if (state.senderFingerprint == "SELF") "SOS submitted" else "Incoming SOS",
                     color = AccentRed, fontFamily = AppFontFamily, fontWeight = FontWeight.Bold, fontSize = 28.sp)
                 Spacer(Modifier.height(8.dp))
@@ -50,6 +59,9 @@ fun EmergencyScreen(viewModel: EmergencyViewModel, onNavigateBack: () -> Unit) {
                         ReportRow("People", "${sos.peopleCount} total · ${sos.injuredCount} injured")
                         ReportRow("Location", if (sos.latitude != null && sos.longitude != null)
                             "${sos.latitude}, ${sos.longitude}" else "No location fix")
+                        sos.accuracy?.let { ReportRow("Location accuracy", "±${it.toInt()} m") }
+                        sos.fixAgeSeconds?.let { ReportRow("Fix age", "$it s at submission") }
+                        sos.pressureHpa?.let { ReportRow("Air pressure", "${"%.1f".format(it)} hPa") }
                         if (sos.note.isNotBlank()) ReportRow("Note", sos.note)
                     }
                 }
@@ -68,7 +80,7 @@ fun EmergencyScreen(viewModel: EmergencyViewModel, onNavigateBack: () -> Unit) {
                 Text("Request help", color = TextPrimary, fontFamily = AppFontFamily,
                     fontWeight = FontWeight.Bold, fontSize = 28.sp)
                 Spacer(Modifier.height(8.dp))
-                Text("Share essential details with nearby AlertMesh devices. Review your report before sending.",
+                Text("Add what you know. AlertMesh sends to connected peers and saves the report for reconnect.",
                     color = TextSecondary, fontFamily = AppFontFamily, fontSize = 15.sp, lineHeight = 22.sp)
                 Spacer(Modifier.height(20.dp))
                 state.error?.let { error ->
