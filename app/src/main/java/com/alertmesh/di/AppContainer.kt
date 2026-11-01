@@ -7,6 +7,7 @@ import com.alertmesh.data.db.RoomSyncStore
 import com.alertmesh.data.repository.MessageRepository
 import com.alertmesh.data.repository.PeerRepository
 import com.alertmesh.protocol.ProtocolEngine
+import com.alertmesh.protocol.CounterStore
 import com.alertmesh.protocol.model.MessageType
 import com.alertmesh.protocol.cache.DedupCache
 import com.alertmesh.protocol.cache.ReplayGuard
@@ -104,6 +105,11 @@ class AppContainer(private val context: Context) {
             rateLimiter = rateLimiter,
             suppressionTracker = suppressionTracker,
             digestSync = digestSync,
+            counterStore = object : CounterStore {
+                private val preferences = context.getSharedPreferences("message_counter", Context.MODE_PRIVATE)
+                override fun read(): Long = preferences.getLong("last", 0L)
+                override fun write(counter: Long): Boolean = preferences.edit().putLong("last", counter).commit()
+            },
             messageListener = { envelope ->
                 if (envelope.type != MessageType.PRESENCE) {
                     scope.launch { messageRepository.saveMessage(envelope, 0) }

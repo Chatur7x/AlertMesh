@@ -18,9 +18,33 @@ android {
         versionName = "4.0.0"
     }
 
+    val releaseStorePath = System.getenv("ALERTMESH_RELEASE_STORE_FILE")
+    val releaseStorePassword = System.getenv("ALERTMESH_RELEASE_STORE_PASSWORD")
+    val releaseKeyAlias = System.getenv("ALERTMESH_RELEASE_KEY_ALIAS")
+    val releaseKeyPassword = System.getenv("ALERTMESH_RELEASE_KEY_PASSWORD")
+    val releaseSigningReady = listOf(releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
+        .all { !it.isNullOrBlank() }
+    if (System.getenv("ALERTMESH_REQUIRE_SIGNED_RELEASE") == "1" && !releaseSigningReady) {
+        error("Release signing variables are required for a signed release build")
+    }
+    signingConfigs {
+        if (releaseSigningReady) {
+            create("alertmeshRelease") {
+                storeFile = file(releaseStorePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         getByName("debug") {
             applicationIdSuffix = ".devtest"
+        }
+        getByName("release") {
+            isDebuggable = false
+            if (releaseSigningReady) signingConfig = signingConfigs.getByName("alertmeshRelease")
         }
     }
 

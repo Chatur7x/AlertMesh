@@ -132,8 +132,7 @@ class MeshService : Service() {
     private fun allPermissionsGranted(): Boolean {
         var permissions = mutableListOf<String>(
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.RECORD_AUDIO
+            Manifest.permission.ACCESS_COARSE_LOCATION
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             permissions.addAll(listOf(
@@ -144,7 +143,6 @@ class MeshService : Service() {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.addAll(listOf(
-                Manifest.permission.POST_NOTIFICATIONS,
                 Manifest.permission.NEARBY_WIFI_DEVICES
             ))
         }

@@ -29,6 +29,10 @@ data class NodeIdentity(
     }
 
     companion object {
+        fun deviceIdForPublicKey(publicKey: ByteArray): String =
+            MessageDigest.getInstance("SHA-256").digest(publicKey).take(8)
+                .joinToString("") { "%02x".format(it) }
+
         private val WORDS = listOf(
             "apple", "brave", "crane", "delta", "eagle", "flame", "grape", "heart",
             "igloo", "jelly", "karma", "lemon", "mango", "noble", "ocean", "pearl",

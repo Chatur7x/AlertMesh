@@ -38,7 +38,7 @@ class ReconnectSyncTest {
 
         fun engine(transport: LoopbackTransport, crypto: TinkCryptoProvider,
                    store: MemorySyncStore, listener: (MessageEnvelope) -> Unit) = ProtocolEngine(
-            transport, crypto, DedupCache(), ReplayGuard(), RateLimiter(), SuppressionTracker(),
+            transport, crypto, DedupCache(), ReplayGuard(), RateLimiter(maxTokens = 1000), SuppressionTracker(),
             DigestSync(store, crypto) { origin ->
                 when (origin) {
                     cryptoA.getDeviceId() -> cryptoA.getPublicKey()
@@ -57,16 +57,16 @@ class ReconnectSyncTest {
         listOf(MessageType.TEXT, MessageType.SOS, MessageType.VOICE).forEach { type ->
             storeA.messages.add(engineA.sendMessage(type, byteArrayOf(type.ordinal.toByte())))
         }
-        repeat(5) {
+        repeat(100) {
             storeA.messages.add(engineA.sendMessage(MessageType.TEXT, ByteArray(16_000) { it.toByte() }))
         }
         assertEquals(0, received.size)
 
         a.connectTo(b)
-        delay(1000)
-        assertEquals(8, received.size)
+        delay(30_000)
+        assertEquals(103, received.size)
         assertEquals(listOf(MessageType.TEXT, MessageType.SOS, MessageType.VOICE), received.take(3).map { it.type })
-        assertEquals(8, storeB.messages.size)
+        assertEquals(103, storeB.messages.size)
 
         engineA.stop(); engineB.stop(); a.stop(); b.stop()
     }

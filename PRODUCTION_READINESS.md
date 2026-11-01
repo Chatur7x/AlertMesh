@@ -1,6 +1,18 @@
 ---
 # AlertMesh Production Readiness
 
+## Signed release candidate and hardening — 2026-11-01
+
+- Added a persistent, serialized sender counter to prevent a still-running peer from treating messages after a sender restart as replayed. Physical Samsung → Pixel text delivery passed before and after restarting Samsung; both phones reconnected over Nearby.
+- Bound a newly discovered signing public key to the advertised device ID. Reconnect response batches are paced below the receiver's rate-limit refill rate. A protocol test recovered 103 queued messages, including 100 payloads of 16 KB each. This is a loopback load test, not a 100-message physical radio test.
+- Mesh startup now works without microphone or notification permission. A Pixel 8a with microphone permission denied showed a connected mesh. Its barometer displayed a live `954.8 hPa` reading in the field panel. Location revocation displayed Android's permission request; after restoring permission, the app launched again.
+- After a short background interval, both devices returned showing one connected peer; Samsung's `BACKGROUND_RETURN_20261101` text reached the Pixel release app. This is a return-from-background spot check, not an overnight endurance run.
+- Signed release candidate: `.artifacts/AlertMesh-2026-11-01-release-candidate.apk`, SHA-256 `BCB46FCD39350AD76AD2169E77D265BC71A3E685D9EF147F8768C38C6E32A944`. Android `apksigner` verified v2 signing with the dedicated certificate recorded in `RELEASE_BUILD.md`. The APK installed and launched on Pixel 8a and received a physical Nearby text from the Samsung debug build. `:protocol:test :server:build :app:assembleDebug :app:lintDebug :app:assembleRelease :app:lintRelease` passed; 32 protocol tests, 0 failures.
+- **Compatibility gate:** Samsung already has `com.alertmesh` version `0.1.0-rc1` signed with a different, unavailable Android debug key. Android rejected an in-place install of the new release APK. The existing app and data were preserved. See `RELEASE_BUILD.md`.
+- **Readiness:** release candidate, not production deployment. Three physical phones are needed for a radio multi-hop trial; sustained background operation and a large physical reconnect queue need field evidence. A key backup, data migration decision for old installs, and independent security review are required before public disaster-response use. Peer identity is self-signed and has no human verification or trusted authority.
+
+---
+
 ## Concept 4 interface and SOS verification — 2026-11-01
 
 - Used `.artifacts/icons/alertmesh_icon_concept4_master_1024.png` as the exact launcher and in-app mark. Rebuilt the Compose palette around its navy, cyan mesh, and coral beacon; added a timed SOS progress indicator, quick actions, and a bounded live pressure chart.

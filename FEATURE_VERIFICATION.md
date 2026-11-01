@@ -1,5 +1,15 @@
 # AlertMesh — Feature Verification Matrix
 
+## Signed candidate and restart delivery — 2026-11-01
+
+- Physical Samsung → Pixel TEXT passed before and after Samsung process restart; Pixel stayed running, and both reconnected over Nearby. This checks sender counter persistence across restart.
+- Pixel installed the signed `com.alertmesh` release candidate, showed one peer with Samsung's debug app, received `RELEASE_MESH_20261101`, and displayed live barometric pressure. With microphone permission denied, the Pixel release still showed a connected mesh. Location revocation produced an Android permission request; restoring permission and relaunching succeeded.
+- Both apps returned from a short background interval with one connected peer; `BACKGROUND_RETURN_20261101` reached the Pixel release app afterward.
+- A loopback reconnect test transferred 103 stored messages, including 100 × 16 KB payloads, with response batching. Public key/device ID mismatch is rejected in a protocol test. All 32 protocol tests and debug/release lint and builds passed.
+- Samsung's existing `com.alertmesh` app has a different signing certificate, so the new release APK cannot update it in place; its data was preserved. Physical three-hop routing, long background endurance, 100-message radio recovery, and independent security review remain unverified.
+
+---
+
 ## Concept 4 UI and automatic SOS — 2026-11-01
 
 - Exact supplied Concept 4 bitmap is wired to launcher and in-app branding. Navy/cyan/coral screens and animation feedback were built and inspected on the Samsung SM-M307F; its smaller screen prompted shorter sensor labels.

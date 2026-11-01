@@ -7,6 +7,7 @@ import com.alertmesh.protocol.model.MessageEnvelope
 import com.alertmesh.protocol.model.MessageType
 import com.alertmesh.protocol.model.SosPayload
 import com.alertmesh.protocol.model.PresencePayload
+import com.alertmesh.protocol.model.NodeIdentity
 import com.alertmesh.protocol.routing.RateLimiter
 import java.nio.charset.Charset
 import com.alertmesh.protocol.routing.SuppressionTracker
@@ -23,6 +24,8 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.protobuf.ProtoBuf
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class ProtocolEngine(
     private val transport: Transport,
@@ -34,11 +37,13 @@ class ProtocolEngine(
     private val digestSync: DigestSync?,
     private val messageListener: (MessageEnvelope) -> Unit,
     private val peerPresenceListener: ((PresencePayload, ByteArray) -> Unit)? = null,
+    private val counterStore: CounterStore? = null,
     private val engineScope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 ) {
     private val knownPublicKeys = ConcurrentHashMap<String, ByteArray>()
     private val knownHybridKeys = ConcurrentHashMap<String, ByteArray>()
-    private var counter: Long = 0
+    private var counter: Long = maxOf(counterStore?.read() ?: 0L, System.currentTimeMillis() * 1_000L)
+    private val counterMutex = Mutex()
     private var job: Job? = null
     private var peers = emptySet<String>()
     private var presenceJob: Job? = null
@@ -125,7 +130,8 @@ class ProtocolEngine(
             if (originPubKey == null && envelope.type == MessageType.PRESENCE) {
                 try {
                     val presence = ProtoBuf.decodeFromByteArray(PresencePayload.serializer(), envelope.payload)
-                    if (presence.publicKey.isNotEmpty()) {
+                    if (presence.deviceId == envelope.origin &&
+                        NodeIdentity.deviceIdForPublicKey(presence.publicKey) == envelope.origin) {
                         originPubKey = presence.publicKey
                     }
                 } catch (_: Exception) {}
@@ -181,6 +187,7 @@ class ProtocolEngine(
                             val payload = ProtoBuf.encodeToByteArray(ListSerializer(MessageEnvelope.serializer()), batch)
                             sendMessage(MessageType.SYNC_RESP, payload, ttl = 1, targetPeer = senderPeerId)
                             batch.clear()
+                            delay(250) // Stay below the receiver's five-frame-per-second refill rate.
                         }
                         for (missing in missingMessages) {
                             val candidate = batch + missing
@@ -225,6 +232,7 @@ class ProtocolEngine(
     }
 
     fun registerPublicKey(deviceId: String, publicKey: ByteArray) {
+        require(NodeIdentity.deviceIdForPublicKey(publicKey) == deviceId) { "Public key does not match device ID" }
         knownPublicKeys[deviceId] = publicKey
     }
 
@@ -236,7 +244,11 @@ class ProtocolEngine(
     }
 
     suspend fun sendMessage(type: MessageType, payload: ByteArray, channel: Int = 0, ttl: Int = 8, targetPeer: String? = null): MessageEnvelope {
-        val msgCounter = ++counter
+        val msgCounter = counterMutex.withLock {
+            val next = ++counter
+            check(counterStore?.write(next) != false) { "Could not persist message counter" }
+            next
+        }
         val finalPayload = if (targetPeer != null && type == MessageType.TEXT) {
             val recipientKey = knownHybridKeys[targetPeer]
                 ?: throw IllegalStateException("Recipient encryption key unavailable: $targetPeer")

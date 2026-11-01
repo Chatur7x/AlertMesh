@@ -18,6 +18,38 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProtocolEngineTest {
 
+    @Test(expected = IllegalArgumentException::class)
+    fun rejectsPublicKeyForWrongDeviceId() = runTest {
+        val crypto = TinkCryptoProvider().apply { generateIdentity() }
+        val engine = ProtocolEngine(
+            transport = LoopbackTransport("sender"), cryptoProvider = crypto,
+            dedupCache = DedupCache(), replayGuard = ReplayGuard(), rateLimiter = RateLimiter(),
+            suppressionTracker = SuppressionTracker(), digestSync = null,
+            messageListener = {}, engineScope = this
+        )
+        engine.registerPublicKey("impersonated-id", crypto.getPublicKey())
+    }
+
+    @Test
+    fun counterContinuesAcrossEngineRestart() = runTest {
+        var saved = 0L
+        val store = object : CounterStore {
+            override fun read() = saved
+            override fun write(counter: Long): Boolean { saved = counter; return true }
+        }
+        val crypto = TinkCryptoProvider().apply { generateIdentity() }
+        fun engine() = ProtocolEngine(
+            transport = LoopbackTransport("sender"), cryptoProvider = crypto,
+            dedupCache = DedupCache(), replayGuard = ReplayGuard(), rateLimiter = RateLimiter(),
+            suppressionTracker = SuppressionTracker(), digestSync = null,
+            messageListener = {}, counterStore = store, engineScope = this
+        )
+        val first = engine().sendMessage(MessageType.TEXT, "before".toByteArray())
+        val second = engine().sendMessage(MessageType.TEXT, "after".toByteArray())
+        org.junit.Assert.assertTrue(second.counter > first.counter)
+        assertEquals(second.counter, saved)
+    }
+
     @Test
     fun oversizedVoiceIsRejectedBeforeSend() = runTest {
         val engine = ProtocolEngine(
