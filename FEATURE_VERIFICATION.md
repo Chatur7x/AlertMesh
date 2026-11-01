@@ -1,5 +1,13 @@
 # AlertMesh — Feature Verification Matrix
 
+## AlertMesh 4.1.0-rc1 package — 2026-11-01
+
+- Selected Concept 4 icon is included as legacy density PNGs, adaptive launcher resources, in-app bitmap, and GitHub brand assets. Android packaging reports app label `AlertMesh`, package `com.alertmesh`, version `4.1.0-rc1` and version code 5.
+- Signed APK SHA-256 `4EC5B939C9994F3346D4B4A7181A5D472C995F0010FED588CA50F053F02054BE`; v2 signature verified. Protocol tests (32), server build, release assembly, and release lint passed.
+- Both physical phones disconnected from ADB before this version's install attempt, so on-device installation of 4.1.0-rc1 is not claimed. Earlier two-phone and signed-candidate checks remain recorded below.
+
+---
+
 ## Signed candidate and restart delivery — 2026-11-01
 
 - Physical Samsung → Pixel TEXT passed before and after Samsung process restart; Pixel stayed running, and both reconnected over Nearby. This checks sender counter persistence across restart.

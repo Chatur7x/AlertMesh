@@ -1,238 +1,73 @@
-# 🛜 AlertMesh
+<div align="center">
 
-**Offline-first disaster response mesh network for Android** — enabling encrypted peer-to-peer communication when cellular and internet infrastructure fails.
+<img src="branding/alertmesh-icon.png" alt="AlertMesh beacon inside a connected mesh" width="150">
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Platform-Android-green?logo=android" />
-  <img src="https://img.shields.io/badge/Min%20SDK-24-blue" />
-  <img src="https://img.shields.io/badge/Language-Kotlin-purple?logo=kotlin" />
-  <img src="https://img.shields.io/badge/UI-Jetpack%20Compose-blue?logo=jetpackcompose" />
-  <img src="https://img.shields.io/badge/Crypto-Google%20Tink-orange" />
-  <img src="https://img.shields.io/badge/Transport-Nearby%20Connections-red?logo=google" />
-</p>
+# AlertMesh
 
----
+**Offline emergency messaging for nearby Android phones**
 
-## 🚨 The Problem
+Send SOS reports, text, and short voice notes over a local Nearby Connections network when cellular service or internet access is unavailable.
 
-When earthquakes, floods, or other disasters strike, traditional communication infrastructure (cellular towers, internet) often goes down first. Victims become isolated — unable to call for help, coordinate rescues, or warn others of danger.
+[Download the latest APK](https://github.com/Chatur7x/AlertMesh/releases) · [Feature verification](FEATURE_VERIFICATION.md) · [Production readiness](PRODUCTION_READINESS.md)
 
-## 💡 The Solution
+</div>
 
-**AlertMesh** creates an ad-hoc mesh network between nearby Android devices using **Bluetooth Low Energy** and **Wi-Fi Direct** (via Google Nearby Connections). No internet, no cell towers, no central server required.
+> **Release candidate:** AlertMesh has passed the tests described in this repository, including two-phone Nearby delivery. It is not certified for emergency deployment. Always use official emergency services when they are available.
 
-Messages hop from device to device, extending the network's reach far beyond any single radio's range.
+## At a glance
 
----
+| | |
+|---|---|
+| **Emergency SOS** | Tap to add triage details, or hold for 10 seconds to send an automatic report with the latest available location. |
+| **Nearby messaging** | Discover other AlertMesh phones and exchange signed text, SOS, and voice messages without a central server. |
+| **Recovery** | Save outgoing reports locally and offer them to peers after reconnecting. |
+| **Voice** | Record a short AMR-NB note and play a received note through the phone speaker. |
+| **Field view** | See connection status, peer count, and live air pressure on phones with a barometer. Peer height is an indicative comparison only. |
 
-## ✨ Key Features
+The interface uses the [Concept 4 beacon and mesh icon](branding/alertmesh-icon.png) throughout the launcher and app. The [brand sheet](branding/alertmesh-showcase.png) shows the icon at several sizes.
 
-| Feature | Description |
-|---------|-------------|
-| 🔗 **Mesh Networking** | Automatic peer discovery & multi-hop message relay via BLE/Wi-Fi Direct |
-| 🔐 **End-to-End Encryption** | Ed25519 signatures + AES-256-GCM payload encryption via Google Tink |
-| 🆘 **Emergency SOS** | One-tap SOS broadcast with GPS coordinates, triage info, and condition status |
-| 🎙️ **Voice Notes** | Push-to-talk AMR-NB encoded audio transmitted over the mesh |
-| 💬 **Encrypted Chat** | Text messaging with AEAD encryption across the network |
-| 📍 **GPS Location** | Automatic location embedding in presence beacons and SOS alerts |
-| 📡 **Presence Beacons** | Periodic heartbeats with battery, location, and neighbor count |
-| 🔄 **Store & Forward** | Digest-based sync ensures messages reach peers who join late |
-| 🛡️ **Replay Protection** | Counter-based replay guard + message deduplication cache |
-| ⚡ **Adaptive Power** | Battery-aware duty cycling — conserves power when battery is low |
-| 📊 **Distance Estimation** | Haversine GPS distance + RSSI signal strength + barometric altitude |
-| 🖥️ **Terminal UI** | Retro cyber-tactical terminal interface with command system |
+## How it works
 
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                    :app (Android)                    │
-│  ┌──────────┐  ┌───────────┐  ┌──────────────────┐  │
-│  │ Terminal  │  │ Emergency │  │   MeshService    │  │
-│  │   UI      │  │    UI     │  │  (Foreground)    │  │
-│  └────┬─────┘  └─────┬─────┘  └────────┬─────────┘  │
-│       │              │                  │            │
-│  ┌────┴──────────────┴──────────────────┴─────────┐  │
-│  │              AppContainer (DI)                  │  │
-│  │  MessageRepo │ PeerRepo │ AudioMgr │ LocationMgr│  │
-│  └──────────────────────┬─────────────────────────┘  │
-│                         │                            │
-├─────────────────────────┼────────────────────────────┤
-│                  :protocol (JVM)                     │
-│  ┌──────────────────────┴─────────────────────────┐  │
-│  │              ProtocolEngine                     │  │
-│  │  ┌─────────┐ ┌──────────┐ ┌────────────────┐   │  │
-│  │  │ Crypto  │ │ Routing  │ │   Transport    │   │  │
-│  │  │  Tink   │ │ Dedup    │ │ Nearby/Socket  │   │  │
-│  │  │ Ed25519 │ │ Replay   │ │  BLE+WiFi      │   │  │
-│  │  │ AES-GCM │ │ RateLimit│ │  TCP/JSON      │   │  │
-│  │  └─────────┘ └──────────┘ └────────────────┘   │  │
-│  └────────────────────────────────────────────────┘  │
-│                                                      │
-├──────────────────────────────────────────────────────┤
-│                  :server (JVM CLI)                   │
-│  RendezvousServer │ TopologyManager │ PacketLoss     │
-│  (Testing/Simulation Only)                           │
-└──────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+  A["Phone A\nSOS · text · voice"] <-->|"Nearby Connections"| B["Phone B\nstore · verify · relay"]
+  B <-->|"Nearby Connections"| C["Phone C\nreceive · acknowledge"]
 ```
 
-### Module Breakdown
+Each phone keeps its own identity keys and local message database. Nearby Connections supplies the local radio link. The protocol signs messages, rejects replays and duplicate IDs, and can relay accepted messages while their hop limit remains. A reconnecting peer compares stored message IDs and requests missing reports.
 
-| Module | Purpose |
-|--------|---------|
-| **`:app`** | Android application — UI (Jetpack Compose), services, Room DB, DI |
-| **`:protocol`** | Pure Kotlin/JVM — protocol engine, crypto, routing, transport interfaces |
-| **`:server`** | Testing tool — TCP rendezvous server with configurable topologies & packet loss |
+**Security scope:** identity keys are self-signed. Broadcast SOS and voice payloads are signed but are not end-to-end encrypted; targeted text uses recipient encryption when the recipient key is known. Do not treat the network as a trusted emergency authority or a private channel for every message.
 
----
+## Install
 
-## 🔒 Security Model
+1. Download the newest **AlertMesh APK** from [GitHub Releases](https://github.com/Chatur7x/AlertMesh/releases).
+2. Install it on Android 7.0 or newer with Google Play services and Nearby support.
+3. Grant location and Nearby/Bluetooth permissions to form the mesh. Microphone permission is needed only for recording voice.
+4. Open AlertMesh on two phones. The home screen shows when a peer is connected.
+5. For an SOS, tap **Emergency SOS** to complete the form, or hold it for 10 seconds to submit an automatic report.
 
-| Layer | Mechanism |
-|-------|-----------|
-| **Identity** | Ed25519 key pair generated on first launch via Google Tink |
-| **Authentication** | Every message signed with origin's Ed25519 private key |
-| **Confidentiality** | AES-256-GCM AEAD encryption for payloads |
-| **Integrity** | Signature verification on every hop before relay |
-| **Replay Protection** | Per-origin monotonic counter + deduplication cache |
-| **Rate Limiting** | Token-bucket rate limiter per peer (5 tokens/sec) |
-| **Flood Control** | Suppression tracker — stops relay after 2+ rebroadcasts |
-| **Session Keys** | HKDF-derived session keys from combined public key material |
+A submitted report is saved locally. **“Submitted to the mesh” does not mean another person received it.** Check the connection and delivery status.
 
----
+The release APK is signed with the dedicated AlertMesh release key. An older `com.alertmesh` installation signed with a different key cannot be updated in place; see [release build and migration notes](RELEASE_BUILD.md). Debug builds use `com.alertmesh.devtest` and can be installed alongside the release app.
 
-## 🛠️ Tech Stack
+## Build from source
 
-| Component | Technology |
-|-----------|-----------|
-| Language | Kotlin 2.0 |
-| UI | Jetpack Compose + Material 3 |
-| Crypto | Google Tink (Ed25519, AES-256-GCM, ECIES) |
-| Transport | Google Nearby Connections API (P2P_CLUSTER) |
-| Database | Room (SQLite) |
-| Serialization | kotlinx.serialization (Protobuf wire format) |
-| Concurrency | Kotlin Coroutines + Flows |
-| Audio | MediaCodec (AMR-NB @ 8kHz) |
-| Location | Google Play Services FusedLocationProvider |
-| Min SDK | 24 (Android 7.0) |
-| Target SDK | 35 (Android 15) |
+Requirements: **JDK 21**, Android SDK **36**, and an Android toolchain configured through `local.properties` or `ANDROID_HOME`.
 
----
-
-## 📱 Screens
-
-### Terminal Interface
-A retro cyber-tactical terminal with command system:
-- `/help` — Show available commands
-- `/peers` — List connected mesh peers
-- `/msg <target> <text>` — Send encrypted message
-- `/clear` — Clear terminal output
-- **Push-to-Talk** button for voice notes
-- Command history navigation (↑/↓)
-
-### Emergency SOS
-- One-tap SOS alarm with pulsing animation
-- Triage form: people count, injured count, condition, notes
-- Auto-attaches GPS coordinates
-- Broadcasts with high TTL (12 hops) for maximum reach
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Android Studio Hedgehog or newer
-- JDK 17
-- Android SDK 35
-
-### Build
-```bash
-git clone https://github.com/Chatur7x/AlertMesh.git
-cd AlertMesh
-./gradlew assembleDebug
+```powershell
+./gradlew :protocol:test :server:build :app:assembleDebug :app:lintDebug
 ```
 
-### Install
-```bash
-adb install app/build/outputs/apk/debug/app-debug.apk
-```
+The debug APK is written to `app/build/outputs/apk/debug/`. To build a signed release, provide the four `ALERTMESH_RELEASE_*` signing variables and set `ALERTMESH_REQUIRE_SIGNED_RELEASE=1`; follow [RELEASE_BUILD.md](RELEASE_BUILD.md). Signing keys and passwords are never committed to this repository.
 
-### Testing with Simulation Server
-```bash
-# Terminal 1: Start the rendezvous server
-./gradlew :server:run
+| Module | Role |
+|---|---|
+| `app` | Android Compose UI, foreground mesh service, Nearby transport, Room storage, sensors, audio |
+| `protocol` | Signed message handling, routing, replay protection, sync, and transport interfaces |
+| `server` | Local simulation and topology testing; not required by physical Nearby delivery |
 
-# Terminal 2: Run the app on emulator (auto-connects to 10.0.2.2:9999)
-./gradlew :app:installDebug
-```
+## Verification and limits
 
-Server CLI commands:
-- `topology line` / `ring` / `star` / `mesh` — Change network shape
-- `loss 0.3` — Set 30% packet loss
-- `partition A B` — Partition peers A and B
-- `heal` — Restore full connectivity
+The [feature matrix](FEATURE_VERIFICATION.md) records physical device checks and automated tests. The [readiness report](PRODUCTION_READINESS.md) lists open gates, including three-phone radio multi-hop, longer background endurance, large physical reconnect queues, and independent security review. A protocol loopback test is not a substitute for a radio field test.
 
----
-
-## 📦 Releases
-
-| Version | Status | Description |
-|---------|--------|-------------|
-| **v1.0** | 🟡 Alpha | Core architecture, UI shells, partial protocol wiring |
-| **v2.0** | 🟢 Production | All features complete, fully wired, production-ready |
-
-Download APKs from the [Releases](https://github.com/Chatur7x/AlertMesh/releases) page.
-
----
-
-## 📁 Project Structure
-
-```
-AlertMesh/
-├── app/
-│   └── src/main/java/com/alertmesh/
-│       ├── AlertMeshApp.kt          # Application init + Tink registration
-│       ├── MainActivity.kt          # Permissions + Navigation
-│       ├── data/
-│       │   ├── db/                   # Room database, DAOs, entities
-│       │   └── repository/           # Message & Peer repositories
-│       ├── di/
-│       │   └── AppContainer.kt       # Manual DI / Service Locator
-│       ├── service/
-│       │   ├── MeshService.kt        # Foreground service + presence beacons
-│       │   ├── MeshAudioManager.kt   # AMR-NB voice record/playback
-│       │   ├── MeshLocationManager.kt# GPS via FusedLocationProvider
-│       │   └── NearbyTransport.kt    # Nearby Connections transport driver
-│       └── ui/
-│           ├── terminal/             # Terminal screen + ViewModel
-│           └── emergency/            # Emergency SOS screen + ViewModel
-├── protocol/
-│   └── src/main/java/com/alertmesh/protocol/
-│       ├── ProtocolEngine.kt         # Core message processing pipeline
-│       ├── cache/                    # DedupCache, ReplayGuard
-│       ├── crypto/                   # CryptoProvider, TinkCryptoProvider
-│       ├── model/                    # MessageEnvelope, SosPayload, PresencePayload
-│       ├── routing/                  # RateLimiter, SuppressionTracker, DistanceEstimator
-│       ├── sync/                     # DigestSync (store-and-forward)
-│       └── transport/                # Transport interface, SocketTransport, LoopbackTransport
-└── server/
-    └── src/main/java/com/alertmesh/server/
-        ├── RendezvousServer.kt       # TCP relay for testing
-        ├── ServerCli.kt              # Interactive topology CLI
-        ├── TopologyManager.kt        # Network shape management
-        └── PacketLossInjector.kt     # Simulated packet loss
-```
-
----
-
-## 📄 License
-
-This project is part of an academic research initiative on offline disaster response communication systems.
-
----
-
-<p align="center">
-  <b>Built for when everything else goes down. 🛜</b>
-</p>
+**AlertMesh is a release candidate, not a replacement for official emergency communications.**

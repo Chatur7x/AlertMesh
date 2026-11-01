@@ -1,6 +1,15 @@
 ---
 # AlertMesh Production Readiness
 
+## AlertMesh 4.1.0-rc1 packaging — 2026-11-01
+
+- Adopted the selected Concept 4 icon in legacy density-specific launcher PNGs and adaptive/themed icon resources. Added the master icon, Play Store asset, and brand sheet under `branding/`; rewrote the README to match the current UI and verified feature scope.
+- Bumped Android to `versionCode 5`, `versionName 4.1.0-rc1`, package and label `com.alertmesh` / `AlertMesh`. Built `.artifacts/AlertMesh.apk` with the dedicated release key; SHA-256 `4EC5B939C9994F3346D4B4A7181A5D472C995F0010FED588CA50F053F02054BE`. Android `aapt` confirmed version and label; `apksigner` verified v2 signing and the expected release certificate.
+- `:protocol:test :server:build :app:assembleRelease :app:lintRelease` passed with 32 protocol tests and no failures. Both phones disconnected from ADB before installation of this exact new version, so this version's device launch remains unverified. The prior signed release candidate did install and receive a Nearby text on Pixel 8a.
+- This is a prerelease APK. The older Samsung `com.alertmesh` app still has a different signer and cannot be updated in place with this APK. Field and security gates below remain open.
+
+---
+
 ## Signed release candidate and hardening — 2026-11-01
 
 - Added a persistent, serialized sender counter to prevent a still-running peer from treating messages after a sender restart as replayed. Physical Samsung → Pixel text delivery passed before and after restarting Samsung; both phones reconnected over Nearby.
