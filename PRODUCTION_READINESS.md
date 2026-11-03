@@ -1,6 +1,16 @@
 ---
 # AlertMesh Production Readiness
 
+## AlertMesh REF build — 2026-11-03
+
+- Android `versionCode 6`, `versionName 4.1.0-rc2`, label `AlertMesh`. Signed APK `.artifacts/AlertMesh-REF.apk`, SHA-256 `02D40EEA8603222014B74A3148CDAE3AA1485DFF95E4E21415953AFCADEC7A94`. `aapt` confirmed package/version/label and `apksigner` verified the dedicated release certificate.
+- Fixed the Activity's mesh restart gate so optional microphone and notification permissions do not block the foreground transport. Fixed Room reconnect queries to fetch message IDs in bounded batches. Terminal diagnostic commands no longer claim success for unimplemented ping, trace, or manual sync operations.
+- Full gate passed: 32 protocol tests, server build, debug and release APK assembly, debug and release lint. The exact signed APK installed and launched on Pixel 8a. With microphone and notification permissions denied, its mesh service and home UI started. Pixel short tap opened the SOS form; an 11-second hold submitted `UNKNOWN` for one person with a fresh location fix and correctly stated that no peer received it. Pixel pressure displayed a live reading. No fatal AndroidRuntime exception appeared in the captured log.
+- Emulator had an older `com.alertmesh` signed with another key, so the same source was installed there as the side-by-side `.devtest` debug package; the old app/data were preserved. No second physical phone was connected for this build. Incoming SOS/voice, reconnect over Nearby, and radio multi-hop were **not reverified on 4.1.0-rc2**; prior physical evidence is recorded below.
+- **Readiness:** verified release candidate, not a guarantee of perfect emergency operation. Longer background runs, large physical queue recovery, three-phone radio multi-hop, existing-install signing migration, and independent security review remain open.
+
+---
+
 ## AlertMesh 4.1.0-rc1 packaging — 2026-11-01
 
 - Adopted the selected Concept 4 icon in legacy density-specific launcher PNGs and adaptive/themed icon resources. Added the master icon, Play Store asset, and brand sheet under `branding/`; rewrote the README to match the current UI and verified feature scope.

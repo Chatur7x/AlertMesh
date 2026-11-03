@@ -15,7 +15,7 @@ class RoomSyncStore(private val messageDao: MessageDao) : SyncStore {
     }
 
     override fun getMessages(msgIds: List<String>): List<MessageEnvelope> = runBlocking {
-        messageDao.getMessagesByIds(msgIds).map { entity ->
+        msgIds.chunked(500).flatMap { messageDao.getMessagesByIds(it) }.map { entity ->
             MessageEnvelope(
                 msgId = entity.msgId,
                 origin = entity.origin,

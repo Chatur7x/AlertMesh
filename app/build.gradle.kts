@@ -14,8 +14,8 @@ android {
         applicationId = "com.alertmesh"
         minSdk = 24
         targetSdk = 35
-        versionCode = 5
-        versionName = "4.1.0-rc1"
+        versionCode = 6
+        versionName = "4.1.0-rc2"
     }
 
     val releaseStorePath = System.getenv("ALERTMESH_RELEASE_STORE_FILE")

@@ -43,15 +43,7 @@ class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val fineLocation = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
-        var bluetoothScan = true
-        var bluetoothConnect = true
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            bluetoothScan = permissions[Manifest.permission.BLUETOOTH_SCAN] ?: false
-            bluetoothConnect = permissions[Manifest.permission.BLUETOOTH_CONNECT] ?: false
-        }
-        
-        if (!fineLocation || !bluetoothScan || !bluetoothConnect) {
+        if (!meshPermissionsGranted()) {
             Toast.makeText(this, "AlertMesh requires Location and Bluetooth permissions to form the mesh network", Toast.LENGTH_LONG).show()
         } else {
             startMeshService()
@@ -139,20 +131,21 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (requiredPermissions().all {
-            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
-        }) startMeshService()
+        if (meshPermissionsGranted()) startMeshService()
     }
 
     private fun requestPermissions() {
-        requestPermissionLauncher.launch(requiredPermissions().toTypedArray())
+        requestPermissionLauncher.launch((meshPermissions() + optionalPermissions()).toTypedArray())
     }
 
-    private fun requiredPermissions(): List<String> {
+    private fun meshPermissionsGranted(): Boolean = meshPermissions().all {
+        ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun meshPermissions(): List<String> {
         val permissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.RECORD_AUDIO
+            Manifest.permission.ACCESS_COARSE_LOCATION
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             permissions.add(Manifest.permission.BLUETOOTH_SCAN)
@@ -160,10 +153,14 @@ class MainActivity : ComponentActivity() {
             permissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
             permissions.add(Manifest.permission.NEARBY_WIFI_DEVICES)
         }
         return permissions
+    }
+
+    private fun optionalPermissions(): List<String> = buildList {
+        add(Manifest.permission.RECORD_AUDIO)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     private fun startMeshService() {

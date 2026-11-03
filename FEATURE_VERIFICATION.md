@@ -1,5 +1,13 @@
 # AlertMesh — Feature Verification Matrix
 
+## AlertMesh REF / 4.1.0-rc2 — 2026-11-03
+
+- Exact signed `AlertMesh-REF.apk` installed and launched on Pixel 8a. `aapt` reports `com.alertmesh`, version code 6, `4.1.0-rc2`, label `AlertMesh`; `apksigner` verified the release certificate. SHA-256 `02D40EEA8603222014B74A3148CDAE3AA1485DFF95E4E21415953AFCADEC7A94`.
+- Pixel: home UI and live pressure visible; SOS short tap opened `Request help`; 11-second hold submitted an automatic `UNKNOWN` report with one person and a fresh location fix. The UI said no peers were connected and did not claim delivery. With microphone and notification permission denied, the mesh service still started and UI remained usable.
+- Full gate: 32 protocol tests, server build, debug/release assembly, debug/release lint passed. The emulator accepted the side-by-side debug build; its older release-signed app was preserved. Two-phone Nearby receipt, received voice playback, and reconnect were tested in earlier builds but could not be repeated for this version with only one physical phone connected.
+
+---
+
 ## AlertMesh 4.1.0-rc1 package — 2026-11-01
 
 - Selected Concept 4 icon is included as legacy density PNGs, adaptive launcher resources, in-app bitmap, and GitHub brand assets. Android packaging reports app label `AlertMesh`, package `com.alertmesh`, version `4.1.0-rc1` and version code 5.

@@ -219,9 +219,7 @@ class TerminalViewModel(
                 appendLine(infoLine("/send <text>       - Universal message broadcast"), "info")
                 appendLine(infoLine("/msg <target> <msg>- Send message to target or broadcast"), "info")
                 appendLine(infoLine("/peers             - List all discovered online peers & stats"), "info")
-                appendLine(infoLine("/ping [target]     - Ping specific peer or broadcast ping all"), "info")
                 appendLine(infoLine("/status            - Display local node diagnostic status"), "info")
-                appendLine(infoLine("/fix               - Universal diagnostic & mesh repair"), "info")
                 appendLine(infoLine("/channel <1-8>     - Set active communication channel"), "info")
                 appendLine(infoLine("/sos [note]        - Universal Emergency SOS alert broadcast"), "info")
                 appendLine(infoLine("/clear             - Clear terminal log screen"), "info")
@@ -255,6 +253,14 @@ class TerminalViewModel(
                 appendLine(warnLine("Ping is not implemented yet"), "warn")
             }
 
+            is CommandParser.Command.Trace -> {
+                appendLine(warnLine("Route tracing is not implemented yet"), "warn")
+            }
+
+            is CommandParser.Command.Sync -> {
+                appendLine(warnLine("Manual sync is not implemented; peers sync automatically on connect"), "warn")
+            }
+
             is CommandParser.Command.Status -> {
                 viewModelScope.launch {
                     val fp = container.cryptoProvider.getFingerprint()
@@ -277,12 +283,9 @@ class TerminalViewModel(
 
             is CommandParser.Command.Fix -> {
                 viewModelScope.launch {
-                    appendLine(infoLine("Running Universal Mesh Diagnostics & Repair..."), "info")
                     container.peerRepository.markStale()
                     container.locationManager.startLocationUpdates()
-                    appendLine(okLine("✓ Permissions verified & location updates refreshed"), "ok")
-                    appendLine(okLine("✓ Peer table cleaned & stale nodes updated"), "ok")
-                    appendLine(okLine("✓ Mesh transport active and broadcasting presence"), "ok")
+                    appendLine(infoLine("Refreshed location updates and marked stale peers. Check /status for current mesh state."), "info")
                 }
             }
 
@@ -326,7 +329,7 @@ class TerminalViewModel(
             }
 
             else -> {
-                appendLine(okLine("Command executed"), "ok")
+                appendLine(warnLine("Command is unavailable"), "warn")
             }
         }
     }
